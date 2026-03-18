@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPT-SoVITS 音频标注工具</title>
+    <link rel="stylesheet" href="/vendor/inter-font/inter.css">
+    <link rel="stylesheet" href="/vendor/phosphor-icons/regular/style.css">
+    <link rel="stylesheet" href="/vendor/phosphor-icons/fill/style.css">
+    <style>
+        /* ========== CSS Variables & Reset (aligned with main panel) ========== */
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d27;
+            --bg-card: #222636;
+            --bg-card-hover: #2a2f42;
+            --bg-card-selected: #1e3a5f;
+            --accent: #60a5fa;
+            --accent-dim: rgba(96, 165, 250, 0.12);
+            --accent-glow: rgba(96, 165, 250, 0.25);
+            --accent-danger: #f87171;
+            --accent-danger-dim: rgba(248, 113, 113, 0.12);
+            --accent-danger-glow: rgba(248, 113, 113, 0.25);
+            --accent-success: #4ade80;
+            --accent-success-dim: rgba(74, 222, 128, 0.12);
+            --accent-warning: #fbbf24;
+            --accent-warning-dim: rgba(251, 191, 36, 0.12);
+            --text-primary: #e8eaf0;
+            --text-secondary: #b4b9cc;
+            --text-muted: #8c92b3;
+            --border: #2e3348;
+            --border-light: #383d56;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+            --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ========== Topbar ========== */
+        .topbar {
+            height: 52px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            flex-shrink: 0;
+            z-index: 101;
+            position: sticky;
+            top: 0;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .topbar-brand .logo {
+            font-size: 22px;
+            color: var(--accent);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            text-decoration: none;
+        }
+
+        .btn-back:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* ========== Header ========== */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 52px;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            font-size: 22px;
+            color: var(--accent);
+        }
+
+        .header-file {
+            font-size: 14px;
+            color: var(--text-muted);
+            max-width: 500px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .header-stats .stat-value {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* ========== Toolbar ========== */
+        .toolbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            position: sticky;
+            top: 120px;
+            z-index: 99;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+            margin: 0 6px;
+        }
+
+        .toolbar label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        /* ========== Buttons ========== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #0f1117;
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: #7bb8fc;
+            border-color: #7bb8fc;
+        }
+
+        .btn-danger {
+            background: var(--accent-danger-dim);
+            color: var(--accent-danger);
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(248, 113, 113, 0.25);
+            border-color: var(--accent-danger);
+        }
+
+        .btn-success {
+            background: var(--accent-success-dim);
+            color: var(--accent-success);
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+
+        .btn-success:hover {
+            background: rgba(74, 222, 128, 0.25);
+            border-color: var(--accent-success);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ========== Duration Filter ========== */
+        .filter-panel {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-panel label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-panel label i {
+            font-size: 18px;
+            color: var(--accent);
+        }
+
+        .range-slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .range-slider-group input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 160px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .range-slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .range-value {
+            background: var(--bg-card);
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 50px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .filter-info {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .filter-info strong {
+            color: var(--accent);
+        }
+
+        /* ========== Main Content ========== */
+        .main {
+            padding: 20px 28px;
+            padding-bottom: 80px;
+        }
+
+        /* ========== Audio Entry Row ========== */
+        .entry-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .entry-row:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .entry-row.selected {
+            background: var(--bg-card-selected);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent-glow);
+        }
+
+        .entry-row.playing {
+            border-color: var(--accent-success);
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+        }
+
+        /* Big checkbox */
+        .entry-check {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--bg-primary);
+            border: 2px solid var(--text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .entry-check:hover {
+            border-color: var(--accent);
+        }
+
+        .entry-check:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .entry-check:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0f1117;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Entry index */
+        .entry-index {
+            flex-shrink: 0;
+            width: 44px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Play button */
+        .entry-play {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            background: var(--accent-dim);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 18px;
+        }
+
+        .entry-play:hover {
+            background: var(--accent-glow);
+            transform: scale(1.1);
+        }
+
+        .entry-play.playing-btn {
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+            background: var(--accent-success-dim);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(74, 222, 128, 0);
+            }
+        }
+
+        /* Duration badge */
+        .entry-duration {
+            flex-shrink: 0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .duration-short {
+            background: var(--accent-danger-dim);
+            color: var(--accent-danger);
+        }
+
+        .duration-ok {
+            background: var(--accent-success-dim);
+            color: var(--accent-success);
+        }
+
+        .duration-long {
+            background: var(--accent-warning-dim);
+            color: var(--accent-warning);
+        }
+
+        /* Entry text (editable) */
+        .entry-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 15px;
+            color: var(--text-primary);
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            outline: none;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+
+        .entry-text:hover {
+            border-color: var(--border);
+        }
+
+        .entry-text:focus {
+            border-color: var(--accent);
+            background: var(--bg-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* Entry info */
+        .entry-info {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            min-width: 120px;
+        }
+
+        .entry-speaker {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .entry-lang {
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 2px 8px;
+            background: var(--accent-dim);
+            border-radius: 10px;
+        }
+
+        .entry-filename {
+            font-size: 12px;
+            color: var(--text-muted);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* ========== Loading / Empty ========== */
+        .loading-container,
+        .empty-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty-icon {
+            font-size: 52px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            color: var(--accent-danger);
+            margin-bottom: 12px;
+        }
+
+        /* ========== Toast notification ========== */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast-success {
+            border-color: var(--accent-success);
+        }
+
+        .toast-error {
+            border-color: var(--accent-danger);
+        }
+
+        .toast-info {
+            border-color: var(--accent);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* ========== Keyboard shortcut hint ========== */
+        .shortcuts-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 8px 28px;
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+            z-index: 100;
+        }
+
+        .shortcut-key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 20px;
+            padding: 0 5px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        /* ========== Ref Audio Tag ========== */
+        .entry-ref-btn {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 18px;
+        }
+
+        .entry-ref-btn:hover {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.08);
+        }
+
+        .entry-ref-btn.tagged {
+            border-color: #fbbf24;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.15);
+        }
+
+        .entry-row.ref-tagged {
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            background: rgba(251, 191, 36, 0.04);
+        }
+
+        .entry-row.ref-tagged:hover {
+            background: rgba(251, 191, 36, 0.08);
+        }
+
+        .ref-emotion-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+            white-space: nowrap;
+        }
+
+        /* Emotion picker dropdown */
+        .ref-emotion-picker {
+            position: absolute;
+            z-index: 200;
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 8px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4px;
+            min-width: 380px;
+        }
+
+        .ref-emotion-picker button {
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .ref-emotion-picker button:hover {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+        }
+
+        .ref-emotion-picker .custom-row {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 6px;
+        }
+
+        .ref-emotion-picker .custom-row input {
+            flex: 1;
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .ref-emotion-picker .custom-row input:focus {
+            border-color: #fbbf24;
+        }
+
+        /* ========== Scrollbar ========== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Topbar -->
+    <div class="topbar">
+        <div class="topbar-brand">
+            <i class="ph ph-pencil-simple-line logo"></i>
+            <span>音频标注工具</span>
+        </div>
+        <div class="topbar-right">
+            <a class="btn-back" href="/" title="返回训练面板">
+                <i class="ph ph-arrow-left"></i>
+                返回训练面板
+            </a>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1><i class="ph ph-microphone-stage"></i> GPT-SoVITS 音频标注</h1>
+            <div class="header-file" id="headerFile">加载中...</div>
+        </div>
+        <div class="header-stats">
+            <div>总条目 <span class="stat-value" id="statTotal">-</span></div>
+            <div>已筛选 <span class="stat-value" id="statFiltered">-</span></div>
+            <div>已选中 <span class="stat-value" id="statSelected">0</span></div>
+        </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="btn" id="btnSelectAll" onclick="selectAll()"><i class="ph ph-check-square"></i> 全选</button>
+            <button class="btn" id="btnDeselectAll" onclick="deselectAll()"><i class="ph ph-square"></i> 取消全选</button>
+            <button class="btn" id="btnInvert" onclick="invertSelection()"><i class="ph ph-arrows-left-right"></i>
+                反选</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <button class="btn btn-danger" id="btnDelete" onclick="deleteSelected()" disabled><i
+                    class="ph ph-trash"></i> 批量删除 (0)</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <button class="btn btn-success" id="btnUndo" onclick="undoAction()"><i
+                    class="ph ph-arrow-counter-clockwise"></i> 撤销</button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <button class="btn" id="btnSelectShort" onclick="selectByDuration('short')">选中过短</button>
+            <button class="btn" id="btnSelectLong" onclick="selectByDuration('long')">选中过长</button>
+        </div>
+    </div>
+
+    <!-- Duration Filter -->
+    <div class="filter-panel">
+        <label><i class="ph ph-timer"></i> 时长筛选:</label>
+        <div class="range-slider-group">
+            <label>最小</label>
+            <input type="range" id="filterMin" min="0" max="60" step="0.5" value="0" oninput="onFilterChange()">
+            <span class="range-value" id="filterMinVal">0s</span>
+        </div>
+        <div class="range-slider-group">
+            <label>最大</label>
+            <input type="range" id="filterMax" min="0" max="60" step="0.5" value="60" oninput="onFilterChange()">
+            <span class="range-value" id="filterMaxVal">60s</span>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <button class="btn" onclick="setQuickFilter(0, 1)">&lt; 1s</button>
+            <button class="btn" onclick="setQuickFilter(0, 2)">&lt; 2s</button>
+            <button class="btn" onclick="setQuickFilter(2, 10)">2-10s</button>
+            <button class="btn" onclick="setQuickFilter(10, 60)"> &gt; 10s</button>
+            <button class="btn btn-primary" onclick="setQuickFilter(0, 999)">显示全部</button>
+        </div>
+        <div class="filter-info">
+            显示 <strong id="filterCount">-</strong> / <strong id="filterTotal">-</strong> 条
+        </div>
+    </div>
+
+    <!-- Main List -->
+    <div class="main" id="mainList">
+        <div class="loading-container" id="loadingState">
+            <div class="loading-spinner"></div>
+            <div>正在加载音频数据...</div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Keyboard Shortcuts Bar -->
+    <div class="shortcuts-bar">
+        <div><span class="shortcut-key">Space</span> 播放/暂停</div>
+        <div><span class="shortcut-key">Del</span> 删除选中</div>
+        <div><span class="shortcut-key">Ctrl+A</span> 全选</div>
+        <div><span class="shortcut-key">Ctrl+Z</span> 撤销</div>
+        <div><span class="shortcut-key">↑↓</span> 导航</div>
+        <div><span class="shortcut-key">Shift+点击</span> 范围选择</div>
+        <div><span class="shortcut-key">R</span> 标记参考音频</div>
+    </div>
+
+    <!-- Hidden audio element -->
+    <audio id="audioPlayer" preload="none"></audio>
+
+    <script>
+        // ============== State ==============
+        let allEntries = [];
+        let filteredEntries = [];
+        let selectedIds = new Set();
+        let currentPlayingId = null;
+        let lastClickedIndex = -1;     // for shift-click range select
+        let focusedIndex = -1;         // for keyboard navigation
+        let refTags = {};              // id -> {emotion, wav_path, ...}
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        // ============== API ==============
+        async function apiGet(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+            return res.json();
+        }
+        async function apiPost(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+            return res.json();
+        }
+
+        // ============== Init ==============
+        async function init() {
+            const loadingEl = document.getElementById('loadingState');
+            try {
+                const data = await apiGet('/api/annotate/entries');
+                allEntries = data.entries || [];
+                document.getElementById('headerFile').textContent = data.file || '未知文件';
+                document.getElementById('statTotal').textContent = data.total || 0;
+
+                // Set slider max based on actual data
+                if (allEntries.length > 0) {
+                    const maxDur = Math.ceil(Math.max(...allEntries.map(e => e.duration)));
+                    const sliderMax = Math.min(Math.max(maxDur + 5, 30), 300);
+                    document.getElementById('filterMax').max = sliderMax;
+                    document.getElementById('filterMax').value = sliderMax;
+                    document.getElementById('filterMaxVal').textContent = sliderMax + 's';
+                    document.getElementById('filterMin').max = sliderMax;
+                }
+
+                // Remove loading state BEFORE renderList overwrites mainList innerHTML
+                if (loadingEl) loadingEl.remove();
+                await loadRefTags();
+                applyFilter();
+            } catch (err) {
+                if (loadingEl) {
+                    loadingEl.innerHTML = `
+                    <div class="error-icon"><i class="ph ph-x-circle"></i></div>
+                    <div style="font-size: 16px; color: var(--accent-danger);">加载失败</div>
+                    <div style="margin-top: 8px; color: var(--text-muted);">${err.message}</div>
+                `;
+                }
+            }
+        }
+
+        // ============== Filter ==============
+        function onFilterChange() {
+            const min = parseFloat(document.getElementById('filterMin').value);
+            const max = parseFloat(document.getElementById('filterMax').value);
+            document.getElementById('filterMinVal').textContent = min + 's';
+            document.getElementById('filterMaxVal').textContent = max + 's';
+            applyFilter();
+        }
+
+        function setQuickFilter(min, max) {
+            const sliderMax = parseFloat(document.getElementById('filterMax').max);
+            document.getElementById('filterMin').value = min;
+            document.getElementById('filterMax').value = Math.min(max, sliderMax);
+            document.getElementById('filterMinVal').textContent = min + 's';
+            document.getElementById('filterMaxVal').textContent = (max >= 999 ? sliderMax : max) + 's';
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const min = parseFloat(document.getElementById('filterMin').value);
+            const max = parseFloat(document.getElementById('filterMax').value);
+
+            filteredEntries = allEntries.filter(e => e.duration >= min && e.duration <= max);
+
+            document.getElementById('statFiltered').textContent = filteredEntries.length;
+            document.getElementById('filterCount').textContent = filteredEntries.length;
+            document.getElementById('filterTotal').textContent = allEntries.length;
+
+            renderList();
+            updateSelectionUI();
+        }
+
+        // ============== Render List ==============
+        function renderList() {
+            const container = document.getElementById('mainList');
+
+            if (filteredEntries.length === 0) {
+                container.innerHTML = `
+                <div class="empty-container">
+                    <div class="empty-icon"><i class="ph ph-tray"></i></div>
+                    <div style="font-size: 16px;">没有匹配的音频条目</div>
+                    <div style="margin-top: 8px; font-size: 14px; color: var(--text-muted);">尝试调整筛选条件</div>
+                </div>
+            `;
+                return;
+            }
+
+            // Render rows
+            const html = filteredEntries.map((entry, visualIdx) => {
+                const isSelected = selectedIds.has(entry.id);
+                const isPlaying = currentPlayingId === entry.id;
+                const durClass = entry.duration < 1 ? 'duration-short'
+                    : entry.duration > 15 ? 'duration-long'
+                        : 'duration-ok';
+                const filename = entry.wav_path.split(/[/\\]/).pop();
+
+                return `
+                <div class="entry-row ${isSelected ? 'selected' : ''} ${isPlaying ? 'playing' : ''} ${refTags[entry.id] ? 'ref-tagged' : ''}" 
+                     data-id="${entry.id}" data-vidx="${visualIdx}"
+                     onclick="onRowClick(event, ${entry.id}, ${visualIdx})">
+                    <input type="checkbox" class="entry-check" 
+                           ${isSelected ? 'checked' : ''} 
+                           data-id="${entry.id}"
+                           onclick="event.stopPropagation(); toggleSelect(${entry.id}, ${visualIdx}, event)">
+                    <div class="entry-index">#${entry.id}</div>
+                    <button class="entry-play ${isPlaying ? 'playing-btn' : ''}" 
+                            onclick="event.stopPropagation(); togglePlay(${entry.id})"
+                            title="播放">
+                        <i class="${isPlaying ? 'ph-fill ph-pause' : 'ph-fill ph-play'}"></i>
+                    </button>
+                    <span class="entry-duration ${durClass}">${entry.duration}s</span>
+                    <input type="text" class="entry-text" value="${escapeHtml(entry.text)}"
+                           data-id="${entry.id}"
+                           onclick="event.stopPropagation()"
+                           onblur="onTextEdit(${entry.id}, this.value)"
+                           onkeydown="if(event.key==='Enter'){this.blur();}">
+                    <button class="entry-ref-btn ${refTags[entry.id] ? 'tagged' : ''}" 
+                            onclick="event.stopPropagation(); toggleRefTag(${entry.id}, this)"
+                            title="${refTags[entry.id] ? '取消参考音频' : '标记为参考音频'}">
+                        <i class="${refTags[entry.id] ? 'ph-fill ph-star' : 'ph ph-star'}"></i>
+                    </button>
+                    ${refTags[entry.id] ? `<span class="ref-emotion-badge">${escapeHtml(refTags[entry.id].emotion)}</span>` : ''}
+                    <div class="entry-info">
+                        <span class="entry-speaker">${escapeHtml(entry.speaker_name)}</span>
+                        <span class="entry-lang">${escapeHtml(entry.language)}</span>
+                        <span class="entry-filename" title="${escapeHtml(filename)}">${escapeHtml(filename)}</span>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============== Selection ==============
+        function onRowClick(event, id, visualIdx) {
+            if (event.target.tagName === 'INPUT') return;  // checkbox or text field handled separately
+            toggleSelect(id, visualIdx, event);
+        }
+
+        function toggleSelect(id, visualIdx, event) {
+            if (event && event.shiftKey && lastClickedIndex >= 0) {
+                // Range select
+                const start = Math.min(lastClickedIndex, visualIdx);
+                const end = Math.max(lastClickedIndex, visualIdx);
+                for (let i = start; i <= end; i++) {
+                    selectedIds.add(filteredEntries[i].id);
+                }
+            } else {
+                if (selectedIds.has(id)) {
+                    selectedIds.delete(id);
+                } else {
+                    selectedIds.add(id);
+                }
+            }
+            lastClickedIndex = visualIdx;
+            focusedIndex = visualIdx;
+            renderList();
+            updateSelectionUI();
+        }
+
+        function selectAll() {
+            filteredEntries.forEach(e => selectedIds.add(e.id));
+            renderList();
+            updateSelectionUI();
+        }
+
+        function deselectAll() {
+            selectedIds.clear();
+            renderList();
+            updateSelectionUI();
+        }
+
+        function invertSelection() {
+            filteredEntries.forEach(e => {
+                if (selectedIds.has(e.id)) {
+                    selectedIds.delete(e.id);
+                } else {
+                    selectedIds.add(e.id);
+                }
+            });
+            renderList();
+            updateSelectionUI();
+        }
+
+        function selectByDuration(type) {
+            const min = parseFloat(document.getElementById('filterMin').value);
+            const max = parseFloat(document.getElementById('filterMax').value);
+            filteredEntries.forEach(e => {
+                if (type === 'short' && e.duration < 1) selectedIds.add(e.id);
+                if (type === 'long' && e.duration > 15) selectedIds.add(e.id);
+            });
+            renderList();
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedIds.size;
+            document.getElementById('statSelected').textContent = count;
+            const deleteBtn = document.getElementById('btnDelete');
+            deleteBtn.innerHTML = `<i class="ph ph-trash"></i> 批量删除 (${count})`;
+            deleteBtn.disabled = count === 0;
+        }
+
+        // ============== Audio Playback ==============
+        function togglePlay(id) {
+            if (currentPlayingId === id) {
+                // Pause
+                audioPlayer.pause();
+                currentPlayingId = null;
+                renderList();
+                return;
+            }
+
+            const entry = allEntries.find(e => e.id === id);
+            if (!entry) return;
+
+            currentPlayingId = id;
+            audioPlayer.src = `/api/annotate/audio?path=${encodeURIComponent(entry.wav_path)}`;
+            audioPlayer.play().catch(err => {
+                showToast('播放失败: ' + err.message, 'error');
+                currentPlayingId = null;
+                renderList();
+            });
+            renderList();
+        }
+
+        audioPlayer.addEventListener('ended', () => {
+            currentPlayingId = null;
+            renderList();
+        });
+
+        // ============== Actions ==============
+        async function deleteSelected() {
+            const count = selectedIds.size;
+            if (count === 0) return;
+
+            if (!confirm(`确认删除 ${count} 条音频条目？\n（可通过「撤销」恢复）`)) return;
+
+            try {
+                const res = await apiPost('/api/annotate/delete', { ids: Array.from(selectedIds) });
+                showToast(`已删除 ${count} 条，剩余 ${res.remaining} 条`, 'success');
+                selectedIds.clear();
+                // Reload
+                const data = await apiGet('/api/annotate/entries');
+                allEntries = data.entries;
+                document.getElementById('statTotal').textContent = data.total;
+                applyFilter();
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        async function undoAction() {
+            try {
+                const res = await apiPost('/api/annotate/undo', {});
+                showToast(`已撤销，恢复到 ${res.total} 条`, 'info');
+                selectedIds.clear();
+                const data = await apiGet('/api/annotate/entries');
+                allEntries = data.entries;
+                document.getElementById('statTotal').textContent = data.total;
+                applyFilter();
+            } catch (err) {
+                showToast('无法撤销: ' + err.message, 'error');
+            }
+        }
+
+        async function onTextEdit(id, newText) {
+            const entry = allEntries.find(e => e.id === id);
+            if (!entry || entry.text === newText) return;
+
+            try {
+                await apiPost('/api/annotate/edit', { id, text: newText });
+                entry.text = newText;
+                // No need to re-render, input already shows the value
+            } catch (err) {
+                showToast('保存失败: ' + err.message, 'error');
+            }
+        }
+
+        // ============== Toast ==============
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============== Ref Audio Tagging ==============
+        const EMOTION_PRESETS = [
+            // 基础
+            { value: 'default', label: 'default (平静)' },
+            { value: 'happy', label: 'happy (开心)' },
+            { value: 'sad', label: 'sad (悲伤)' },
+            { value: 'angry', label: 'angry (生气)' },
+            { value: 'fear', label: 'fear (害怕)' },
+            { value: 'surprise', label: 'surprise (惊讶)' },
+            { value: 'disgust', label: 'disgust (厌恶)' },
+            // 柔和
+            { value: 'gentle', label: 'gentle (温柔)' },
+            { value: 'tender', label: 'tender (柔情)' },
+            { value: 'comfort', label: 'comfort (安慰)' },
+            // 害羞
+            { value: 'shy', label: 'shy (害羞)' },
+            { value: 'nervous', label: 'nervous (紧张)' },
+            { value: 'embarrassed', label: 'embarrassed (尴尬)' },
+            // 声音
+            { value: 'whisper', label: 'whisper (耳语)' },
+            { value: 'shout', label: 'shout (大喊)' },
+            { value: 'murmur', label: 'murmur (低喃)' },
+            { value: 'sigh', label: 'sigh (叹息)' },
+            // 情绪
+            { value: 'cry', label: 'cry (哭泣)' },
+            { value: 'laugh', label: 'laugh (大笑)' },
+            { value: 'giggle', label: 'giggle (窃笑)' },
+            { value: 'tease', label: 'tease (调侃)' },
+            // 场景
+            { value: 'serious', label: 'serious (严肃)' },
+            { value: 'cold', label: 'cold (冷淡)' },
+            { value: 'excited', label: 'excited (兴奋)' },
+            { value: 'confused', label: 'confused (困惑)' },
+            { value: 'sleepy', label: 'sleepy (困倦)' },
+            { value: 'seductive', label: 'seductive (魅惑)' },
+        ];
+
+        async function loadRefTags() {
+            try {
+                const data = await apiGet('/api/annotate/ref_tags');
+                refTags = {};
+                if (data.tags) {
+                    for (const [key, val] of Object.entries(data.tags)) {
+                        refTags[parseInt(key)] = val;
+                    }
+                }
+            } catch (err) {
+                // silently fail
+            }
+        }
+
+        function toggleRefTag(id, btnEl) {
+            if (refTags[id]) {
+                // Already tagged -> remove
+                removeRefTag(id);
+            } else {
+                // Show emotion picker
+                showEmotionPicker(id, btnEl);
+            }
+        }
+
+        function showEmotionPicker(id, btnEl) {
+            // Remove any existing picker
+            const existing = document.querySelector('.ref-emotion-picker');
+            if (existing) existing.remove();
+
+            const picker = document.createElement('div');
+            picker.className = 'ref-emotion-picker';
+
+            // Entity Whisper compatibility hint
+            const hint = document.createElement('div');
+            hint.style.cssText = 'grid-column: 1 / -1; padding: 6px 10px; margin-bottom: 4px; border-radius: 6px; background: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.2); font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px;';
+            hint.innerHTML = '<i class="ph ph-info" style="font-size: 14px; flex-shrink: 0;"></i> 恶灵低语用户必须使用下方预设情感，而非自定义';
+            picker.appendChild(hint);
+
+            // Preset buttons
+            EMOTION_PRESETS.forEach(p => {
+                const btn = document.createElement('button');
+                btn.textContent = p.label;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    setRefEmotion(id, p.value);
+                    picker.remove();
+                };
+                picker.appendChild(btn);
+            });
+
+            // Custom input row
+            const customRow = document.createElement('div');
+            customRow.className = 'custom-row';
+            const customInput = document.createElement('input');
+            customInput.type = 'text';
+            customInput.placeholder = '高级/自定义情感名称...';
+            customInput.onclick = (e) => e.stopPropagation();
+            customInput.onkeydown = (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' && customInput.value.trim()) {
+                    setRefEmotion(id, customInput.value.trim());
+                    picker.remove();
+                }
+                if (e.key === 'Escape') picker.remove();
+            };
+            const customBtn = document.createElement('button');
+            customBtn.textContent = '确定';
+            customBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (customInput.value.trim()) {
+                    setRefEmotion(id, customInput.value.trim());
+                    picker.remove();
+                }
+            };
+            customRow.appendChild(customInput);
+            customRow.appendChild(customBtn);
+            picker.appendChild(customRow);
+
+            // Position near the button
+            const rect = btnEl.getBoundingClientRect();
+            picker.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+            picker.style.left = Math.max(8, rect.left + window.scrollX - 100) + 'px';
+            document.body.appendChild(picker);
+
+            // Close on click outside
+            const closeHandler = (e) => {
+                if (!picker.contains(e.target) && e.target !== btnEl) {
+                    picker.remove();
+                    document.removeEventListener('click', closeHandler);
+                }
+            };
+            setTimeout(() => document.addEventListener('click', closeHandler), 0);
+        }
+
+        async function setRefEmotion(id, emotion) {
+            try {
+                await apiPost('/api/annotate/ref_tag', { id, is_ref: true, emotion });
+                refTags[id] = { emotion };
+                renderList();
+                updateSelectionUI();
+                showToast(`已标记为参考音频: ${emotion}`, 'success');
+            } catch (err) {
+                showToast('标记失败: ' + err.message, 'error');
+            }
+        }
+
+        async function removeRefTag(id) {
+            try {
+                await apiPost('/api/annotate/ref_tag', { id, is_ref: false, emotion: '' });
+                delete refTags[id];
+                renderList();
+                updateSelectionUI();
+                showToast('已取消参考音频标记', 'info');
+            } catch (err) {
+                showToast('取消标记失败: ' + err.message, 'error');
+            }
+        }
+
+        // ============== Keyboard Shortcuts ==============
+        document.addEventListener('keydown', (e) => {
+            // Skip if typing in text field
+            if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (focusedIndex >= 0 && focusedIndex < filteredEntries.length) {
+                    togglePlay(filteredEntries[focusedIndex].id);
+                }
+            }
+            if (e.key === 'Delete') {
+                e.preventDefault();
+                deleteSelected();
+            }
+            if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                selectAll();
+            }
+            if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                undoAction();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                if (focusedIndex >= 0 && focusedIndex < filteredEntries.length) {
+                    const entryId = filteredEntries[focusedIndex].id;
+                    const btn = document.querySelector(`.entry-ref-btn[onclick*="${entryId}"]`);
+                    toggleRefTag(entryId, btn);
+                }
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (focusedIndex < filteredEntries.length - 1) {
+                    focusedIndex++;
+                    scrollToEntry(focusedIndex);
+                    // If nothing selected, auto-highlight
+                    if (selectedIds.size === 0) {
+                        selectedIds.add(filteredEntries[focusedIndex].id);
+                        renderList();
+                        updateSelectionUI();
+                    }
+                }
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (focusedIndex > 0) {
+                    focusedIndex--;
+                    scrollToEntry(focusedIndex);
+                }
+            }
+        });
+
+        function scrollToEntry(idx) {
+            const rows = document.querySelectorAll('.entry-row');
+            if (rows[idx]) {
+                rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // ============== Start ==============
+        init();
+    </script>
+</body>
+
+</html>
