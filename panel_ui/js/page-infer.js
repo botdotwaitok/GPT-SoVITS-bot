@@ -23,30 +23,35 @@
                 '这件事情我已经考虑很久了，我觉得我们应该好好谈谈。',
                 '太好了！没想到这么快就完成了，真是太开心了！',
                 '我不太确定这样做对不对，但是我会尽力而为的。',
+                '死亡不是终点。快来和我们一起玩黎明杀机吧！',
             ],
             en: [
                 'Hello! How are you doing today? It\'s such a beautiful day outside.',
                 'I\'ve been thinking about this for a while, and I believe we should talk about it.',
                 'That\'s amazing! I can\'t believe we actually made it. I\'m so happy right now!',
                 'I\'m not sure if this is the right choice, but I\'ll do my best.',
+                'Death is not an escape. Please come and play Dead by Daylight with us!',
             ],
             ja: [
                 'こんにちは！今日はとてもいい天気ですね、一緒に散歩しませんか？',
                 'この件についてずっと考えていたんですけど、ちゃんと話し合うべきだと思います。',
                 'やったー！こんなに早く終わるなんて思わなかった、本当に嬉しい！',
                 'これでいいのかよく分からないけど、精一杯頑張ります。',
+                '死は逃げ場ではない。一緒にデッドバイデイライトをプレイしよう！',
             ],
             yue: [
                 '你好呀，今日天气好靓啊，不如一齐出去行下？',
                 '呢件事我谂咗好耐，我觉得我哋应该好好倾下。',
                 '太好喇！冇谂到咁快就搞掂，真系好开心！',
                 '我唔系好肯定咁做啱唔啱，但系我会尽力嘅。',
+                '死亡唔系终点。快啲嚟同我哋一齐玩黎明杀机啦！',
             ],
             ko: [
                 '안녕하세요! 오늘 날씨가 정말 좋네요, 같이 산책할까요?',
                 '이 일에 대해 오래 고민했는데, 우리 진지하게 얘기해 봐야 할 것 같아요.',
                 '대박! 이렇게 빨리 끝날 줄 몰랐어요, 정말 기뻐요!',
                 '이게 맞는 선택인지 잘 모르겠지만, 최선을 다할게요.',
+                '죽음은 탈출이 아니다. 우리와 함께 데드 바이 데이라이트를 플레이하자!',
             ],
         };
 
@@ -124,9 +129,9 @@
                 </div>
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
                     <i class="ph ph-folder-open"></i>
-                    <span>如果没有专门准备参考音频，也可以从下拉列表的「项目切分音频」中选一条 <b>3~10 秒</b>的片段来试听。</span>
+                    <span>如果还没有参考音频，可以用标注工具的「提取参考音频」或「拼接参考音频」功能先准备 <b>3~10 秒</b>的参考音频，也可以点击下方「上传」按钮直接上传。</span>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: end;">
+                <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: end;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">选择参考音频</label>
                         <select class="form-select" id="inferRefSelect" onchange="onRefAudioChange()">
@@ -138,6 +143,9 @@
                     </button>
                     <button class="btn" onclick="inferUploadRefAudio()" style="margin-bottom: 0; height: 40px;" title="上传自定义参考音频">
                         <i class="ph ph-upload-simple"></i> 上传
+                    </button>
+                    <button class="btn" id="btnDeleteRef" onclick="inferDeleteRefAudio()" style="margin-bottom: 0; height: 40px; border-color: var(--accent-danger); color: var(--accent-danger); display: none;" title="删除此参考音频文件">
+                        <i class="ph ph-trash"></i>
                     </button>
                     <input type="file" id="inferRefUploadInput" accept=".wav,.mp3,.ogg,.flac" style="display: none;" onchange="onInferRefFileSelected(event)">
                 </div>
@@ -151,12 +159,10 @@
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">参考音频语言</label>
                         <select class="form-select" id="inferPromptLang">
-                            <option value="zh" selected>中文</option>
-                            <option value="en">英文</option>
-                            <option value="ja">日文</option>
-                            <option value="yue">粤语</option>
-                            <option value="ko">韩文</option>
-                            <option value="auto">自动</option>
+                            ${['zh','en','ja','yue','ko','auto'].map(c => {
+                                const names = {zh:'中文',en:'英文',ja:'日文',yue:'粤语',ko:'韩文',auto:'自动'};
+                                return `<option value="${c}" ${c === getActiveProjectLanguage() ? 'selected' : ''}>${names[c]}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                     <div></div>
@@ -168,30 +174,42 @@
                 <div class="slice-section-title"><i class="ph ph-text-aa"></i>文字转语音</div>
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
                     <i class="ph ph-lightbulb"></i>
-                    <span>新手保持默认设置即可。「文本切分方式」会自动把长文本分段合成，默认按标点符号切分效果最好。
+                    <span>新手保持默认设置即可。「文本切分方式」会自动把长文本分段合成，悬停灯泡图标可查看各方式说明。
                     效果不理想时再展开「高级参数」微调。</span>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label class="form-label">合成语言</label>
                         <select class="form-select" id="inferTextLang" onchange="onInferTextLangChange()">
-                            <option value="zh" selected>中文</option>
-                            <option value="en">英文</option>
-                            <option value="ja">日文</option>
-                            <option value="yue">粤语</option>
-                            <option value="ko">韩文</option>
-                            <option value="auto">自动</option>
+                            ${['zh','en','ja','yue','ko','auto'].map(c => {
+                                const names = {zh:'中文',en:'英文',ja:'日文',yue:'粤语',ko:'韩文',auto:'自动'};
+                                return `<option value="${c}" ${c === getActiveProjectLanguage() ? 'selected' : ''}>${names[c]}</option>`;
+                            }).join('')}
                         </select>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">文本切分方式</label>
+                        <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
+                            文本切分方式
+                            <span class="split-method-tip-trigger" style="position: relative; cursor: help;">
+                                <i class="ph ph-lightbulb" style="font-size: 16px; color: var(--accent); opacity: 0.7; transition: opacity 0.15s;"></i>
+                                <div class="split-method-tip-popup">
+                                    <div style="font-weight: 700; margin-bottom: 8px; font-size: 14px; color: var(--text-primary);">文本切分方式说明</div>
+                                    <div style="font-size: 13px; line-height: 1.7; color: var(--text-secondary);">
+                                        推理时，长文本会被切成短段分别合成再拼接。<br>切得太细可能导致杂音，切得太粗可能漏掉内容。<br><br>
+                                        <b style="color: var(--accent);">中文推荐：</b>按标点切 / 凑四句一切<br>
+                                        <b style="color: var(--accent);">英文推荐：</b>凑四句一切 / 凑50字一切<br>
+                                        <b style="color: var(--accent);">短句：</b>不切
+                                    </div>
+                                </div>
+                            </span>
+                        </label>
                         <select class="form-select" id="inferSplitMethod">
-                            <option value="cut5" selected>按标点符号切</option>
-                            <option value="cut0">不切</option>
-                            <option value="cut1">凑四句一切</option>
-                            <option value="cut2">凑50字一切</option>
-                            <option value="cut3">按中文句号切</option>
-                            <option value="cut4">按英文句号切</option>
+                            <option value="cut5" selected>按标点符号切 — 中英通用，逐句合成</option>
+                            <option value="cut1">凑四句一切 — 四句合并，质量稳定</option>
+                            <option value="cut2">凑50字一切 — 按字数切，适合英文长句</option>
+                            <option value="cut4">按英文句号切 — 仅按 . 切分</option>
+                            <option value="cut3">按中文句号切 — 仅按 。 切分</option>
+                            <option value="cut0">不切 — 整段合成，仅适合短句</option>
                         </select>
                     </div>
                 </div>
@@ -388,22 +406,12 @@
                 if (refSelect) {
                     let refHtml = '';
                     if (data.ref_audios.length > 0) {
-                        refHtml += '<optgroup label="参考音频 (ref_audio/)">';
                         data.ref_audios.forEach(r => {
                             refHtml += `<option value="${escapeAttr(r.path)}" data-prompt="${escapeAttr(r.prompt_text)}">${escapeHtml(r.name)}</option>`;
                         });
-                        refHtml += '</optgroup>';
-                    }
-                    if (data.project_audios.length > 0) {
-                        refHtml += '<optgroup label="项目切分音频">';
-                        data.project_audios.forEach(r => {
-                            const dur = r.duration ? ` (${r.duration.toFixed(1)}s)` : '';
-                            refHtml += `<option value="${escapeAttr(r.path)}">${escapeHtml(r.name)}${dur}</option>`;
-                        });
-                        refHtml += '</optgroup>';
                     }
                     if (!refHtml) {
-                        refHtml = '<option value="">暂无参考音频</option>';
+                        refHtml = '<option value="">暂无参考音频，请先在标注工具提取或上传</option>';
                     }
                     refSelect.innerHTML = refHtml;
                     // 自动填充 prompt text
@@ -417,10 +425,16 @@
         function onRefAudioChange() {
             const sel = document.getElementById('inferRefSelect');
             const promptInput = document.getElementById('inferPromptText');
+            const deleteBtn = document.getElementById('btnDeleteRef');
             if (!sel || !promptInput) return;
             const opt = sel.options[sel.selectedIndex];
             const promptText = opt ? (opt.dataset.prompt || '') : '';
             promptInput.value = promptText;
+
+            // Show delete button when a ref audio is selected
+            if (deleteBtn) {
+                deleteBtn.style.display = sel.value ? '' : 'none';
+            }
         }
 
         let _inferRefPlayer = null;
@@ -509,6 +523,32 @@
 
             // 重置 input 以允许重复上传同一文件
             event.target.value = '';
+        }
+
+        async function inferDeleteRefAudio() {
+            const sel = document.getElementById('inferRefSelect');
+            if (!sel || !sel.value) { showToast('请先选择参考音频', 'error'); return; }
+
+            const opt = sel.options[sel.selectedIndex];
+            const filename = opt ? opt.textContent.trim() : sel.value;
+
+            if (!confirm(`确定要删除参考音频「${filename}」吗？\n\n此操作不可撤销，音频文件及同名文本文件将被永久删除。`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/infer/ref_audio?path=${encodeURIComponent(sel.value)}`, {
+                    method: 'DELETE',
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail || `HTTP ${res.status}`);
+                }
+                showToast(`参考音频已删除: ${filename}`, 'success');
+                await loadInferModels(); // 刷新列表
+            } catch (err) {
+                showToast('删除失败: ' + err.message, 'error');
+            }
         }
 
         async function startInferEngine() {

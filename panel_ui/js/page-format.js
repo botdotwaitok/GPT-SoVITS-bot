@@ -143,17 +143,29 @@
                 `;
                     btn.disabled = false;
                 } else {
-                    el.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
-                        <i class="ph ph-warning" style="font-size: 20px;"></i>
-                        <span>${escapeHtml(data.reason)}</span>
-                    </div>
-                `;
-                    btn.disabled = true;
+                    // Expert mode: show warning but don't disable button
+                    if (isExpertMode()) {
+                        el.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
+                            <i class="ph ph-warning" style="font-size: 20px;"></i>
+                            <span>${escapeHtml(data.reason)}</span>
+                            <span class="expert-mode-badge"><i class="ph ph-rocket-launch"></i> 自由模式 — 不阻止操作</span>
+                        </div>
+                    `;
+                        btn.disabled = false;
+                    } else {
+                        el.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
+                            <i class="ph ph-warning" style="font-size: 20px;"></i>
+                            <span>${escapeHtml(data.reason)}</span>
+                        </div>
+                    `;
+                        btn.disabled = true;
+                    }
                 }
             } catch (err) {
                 el.innerHTML = `<span style="color: var(--accent-danger);">检查失败: ${escapeHtml(err.message)}</span>`;
-                btn.disabled = true;
+                btn.disabled = isExpertMode() ? false : true;
             }
         }
 

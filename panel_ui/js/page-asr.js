@@ -34,15 +34,26 @@
         }
 
         function renderAsrUI(container) {
-            const engine = asrEngines.find(e => e.id === asrSelectedEngine) || asrEngines[0];
+            let engine = asrEngines.find(e => e.id === asrSelectedEngine) || asrEngines[0];
             if (!engine) return;
+
+            // Auto-switch to fasterwhisper if project language isn't supported by current engine
+            const projLang = getActiveProjectLanguage();
+            const engineHasLang = engine.languages.some(l => l.code === projLang);
+            if (!engineHasLang && asrEngines.length > 1) {
+                const fallback = asrEngines.find(e => e.languages.some(l => l.code === projLang));
+                if (fallback) {
+                    asrSelectedEngine = fallback.id;
+                    engine = fallback;
+                }
+            }
 
             const proj = projects.find(p => p.name === activeProject);
             const sliceDir = `output/slicer_opt/${activeProject}`;
 
             // Language options
             const langOptions = engine.languages.map(l =>
-                `<option value="${l.code}" ${l.code === 'zh' ? 'selected' : ''}>${l.name} (${l.code})</option>`
+                `<option value="${l.code}" ${l.code === getActiveProjectLanguage() ? 'selected' : ''}>${l.name} (${l.code})</option>`
             ).join('');
 
             // Model size options (only for fasterwhisper)

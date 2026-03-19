@@ -27,7 +27,7 @@ POST:
     "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
     "prompt_text": "",            # str.(optional) prompt text for the reference audio
     "prompt_lang": "",            # str.(required) language of the prompt text for the reference audio
-    "top_k": 15,                  # int. top k sampling
+    "top_k": 5,                   # int. top k sampling
     "top_p": 1,                   # float. top p sampling
     "temperature": 1,             # float. temperature for sampling
     "text_split_method": "cut5",  # str. text split method, see text_segmentation_method.py for details.
@@ -104,7 +104,7 @@ RESP:
 import os
 import sys
 import traceback
-from typing import Generator, Union
+from typing import Any, Generator, Union
 
 now_dir = os.getcwd()
 sys.path.append(now_dir)
@@ -117,6 +117,7 @@ import signal
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 import uvicorn
 from io import BytesIO
@@ -150,7 +151,13 @@ tts_pipeline = TTS(tts_config)
 
 APP = FastAPI()
 
-
+APP.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class TTS_Request(BaseModel):
     text: str = None
     text_lang: str = None
@@ -158,7 +165,7 @@ class TTS_Request(BaseModel):
     aux_ref_audio_paths: list = None
     prompt_lang: str = None
     prompt_text: str = ""
-    top_k: int = 15
+    top_k: int = 5
     top_p: float = 1
     temperature: float = 1
     text_split_method: str = "cut5"
@@ -355,7 +362,7 @@ async def tts_handle(req: dict):
                 "aux_ref_audio_paths": [],    # list.(optional) auxiliary reference audio paths for multi-speaker tone fusion
                 "prompt_text": "",            # str.(optional) prompt text for the reference audio
                 "prompt_lang": "",            # str.(required) language of the prompt text for the reference audio
-                "top_k": 15,                  # int. top k sampling
+                "top_k": 5,                   # int. top k sampling
                 "top_p": 1,                   # float. top p sampling
                 "temperature": 1,             # float. temperature for sampling
                 "text_split_method": "cut5",  # str. text split method, see text_segmentation_method.py for details.
@@ -460,7 +467,7 @@ async def tts_get_endpoint(
     aux_ref_audio_paths: list = None,
     prompt_lang: str = None,
     prompt_text: str = "",
-    top_k: int = 15,
+    top_k: int = 5,
     top_p: float = 1,
     temperature: float = 1,
     text_split_method: str = "cut5",
@@ -513,6 +520,120 @@ async def tts_post_endpoint(request: TTS_Request):
     req = request.dict()
     return await tts_handle(req)
 
+# ============================================================
+# SillyTavern GPT-SoVITS Adapter 兼容层
+# ============================================================
+# SillyTavern 自带的 gpt-sovits-adapter.js 会 POST 到根路径 /
+# 请求体格式和 api_v2 原生格式不同，需要做转换
+# 
+# 使用方法:
+#   1. 在 ref_audio/ 目录下放入参考音频，命名为 <voice_id>.wav
+#      例如: ref_audio/Bear.wav
+#   2. 同目录创建同名 .txt 文件写入参考音频的文字内容
+#      例如: ref_audio/Bear.txt (内容为音频里说的话)
+#   3. SillyTavern Provider Endpoint 填 http://127.0.0.1:9880
+# ============================================================
+
+REF_AUDIO_DIR = os.path.join(now_dir, "ref_audio")
+os.makedirs(REF_AUDIO_DIR, exist_ok=True)
+
+class ST_TTS_Request(BaseModel):
+    """SillyTavern 发来的请求格式，允许额外字段"""
+    text: str = ""
+    text_lang: str = "zh"
+    ref_audio_path: str = None
+    prompt_lang: str = None
+    prompt_text: str = ""
+    target_voice: str = None
+    card_name: Any = None           # SillyTavern 可能传字符串或列表
+    use_st_adapter: bool = False
+    text_split_method: str = "cut5"
+    batch_size: int = 1
+    media_type: str = "wav"
+    streaming_mode: Union[bool, int, str] = False
+    top_k: int = 5
+    top_p: float = 1
+    temperature: float = 1
+    speed_factor: float = 1.0
+    seed: int = -1
+    parallel_infer: bool = True
+    repetition_penalty: float = 1.35
+    sample_steps: int = 32
+    super_sampling: bool = False
+
+    class Config:
+        extra = "allow"  # 允许 SillyTavern 传入的额外字段
+
+def _find_ref_audio(voice_name: str):
+    """根据 voice_name 在 ref_audio/ 目录下查找参考音频和文本"""
+    for ext in ["wav", "mp3", "ogg", "flac"]:
+        audio_path = os.path.join(REF_AUDIO_DIR, f"{voice_name}.{ext}")
+        if os.path.exists(audio_path):
+            # 查找同名 .txt
+            txt_path = os.path.join(REF_AUDIO_DIR, f"{voice_name}.txt")
+            prompt_text = ""
+            if os.path.exists(txt_path):
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    prompt_text = f.read().strip()
+            return audio_path, prompt_text
+    return None, ""
+
+@APP.post("/")
+async def st_tts_endpoint(request: ST_TTS_Request):
+    """SillyTavern 兼容入口: 自动补全 ref_audio_path / prompt_text / prompt_lang"""
+    req = request.dict()
+
+    # ---- 从 ref_audio_path 或 target_voice 中提取 voice_name ----
+    raw_ref = req.get("ref_audio_path") or ""
+    voice_name = req.get("target_voice", "") or ""
+
+    # SillyTavern 可能传一个构造出来的路径(如 ./参考音频/Bear.wav)
+    # 我们从中提取出不带后缀的文件名作为 voice_name
+    if raw_ref:
+        basename = os.path.splitext(os.path.basename(raw_ref))[0]
+        # 处理类似 Bear.wav.mp3 的双后缀情况
+        if "." in basename:
+            basename = basename.rsplit(".", 1)[0]
+        if basename:
+            voice_name = basename
+
+    if not voice_name:
+        voice_name = "Bear"  # 默认 fallback
+
+    # 用 voice_name 去 ref_audio/ 目录查找实际文件
+    audio_path, prompt_text = _find_ref_audio(voice_name)
+    if audio_path is None:
+        return JSONResponse(status_code=400, content={
+            "message": f"找不到参考音频! 请把音频放到 ref_audio/{voice_name}.wav"
+        })
+    req["ref_audio_path"] = audio_path
+    if not req.get("prompt_text"):
+        req["prompt_text"] = prompt_text
+
+    # 如果没有 prompt_lang，默认和 text_lang 一致
+    if not req.get("prompt_lang"):
+        req["prompt_lang"] = req.get("text_lang", "zh")
+
+    # streaming_mode 可能是字符串 "true"/"false"，转成 int
+    sm = req.get("streaming_mode", False)
+    if isinstance(sm, str):
+        req["streaming_mode"] = 1 if sm.lower() == "true" else 0
+
+    # media_type 为 "auto" 时默认 wav
+    if req.get("media_type", "wav") == "auto":
+        req["media_type"] = "wav"
+
+    # 清理 SillyTavern 特有的字段，避免干扰 tts_handle
+    for key in ["target_voice", "card_name", "use_st_adapter"]:
+        req.pop(key, None)
+
+    print(f"[SillyTavern] 合成请求: text={req.get('text', '')[:30]}... voice={voice_name} ref={req.get('ref_audio_path')}")
+    return await tts_handle(req)
+
+@APP.get("/speakers_list")
+async def speakers_list_endpoint():
+    return JSONResponse(status_code=200, content=["female", "male"])
+
 
 @APP.get("/set_refer_audio")
 async def set_refer_aduio(refer_audio_path: str = None):
@@ -564,6 +685,15 @@ async def set_sovits_weights(weights_path: str = None):
         return JSONResponse(status_code=400, content={"message": "change sovits weight failed", "Exception": str(e)})
     return JSONResponse(status_code=200, content={"message": "success"})
 
+@APP.get("/speakers")
+async def speakers_endpoint():
+    # 给酒馆递一张格式极其标准的“名片对象”
+    return JSONResponse(status_code=200, content=[
+        {
+            "name": "Bear",
+            "voice_id": "Bear"
+        }
+    ])
 
 if __name__ == "__main__":
     try:

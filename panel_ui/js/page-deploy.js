@@ -8,6 +8,8 @@ function updateDeployPage() {
     const container = document.getElementById('deployContent');
     if (!container) return;
 
+    const expert = isExpertMode();
+
     container.innerHTML = `
             <!-- 部署向导步骤条 -->
             <div class="deploy-steps">
@@ -19,32 +21,32 @@ function updateDeployPage() {
                     </div>
                 </div>
                 <div class="deploy-step-connector"></div>
-                <div class="deploy-step locked" id="deployStep2">
-                    <div class="deploy-step-num"><i class="ph ph-lock-simple"></i></div>
+                <div class="deploy-step ${expert ? 'active' : 'locked'}" id="deployStep2">
+                    <div class="deploy-step-num">${expert ? '2' : '<i class="ph ph-lock-simple"></i>'}</div>
                     <div class="deploy-step-info">
                         <div class="deploy-step-title">环境准备</div>
                         <div class="deploy-step-desc">复制运行环境 + 底模</div>
                     </div>
                 </div>
                 <div class="deploy-step-connector"></div>
-                <div class="deploy-step locked" id="deployStep3">
-                    <div class="deploy-step-num"><i class="ph ph-lock-simple"></i></div>
+                <div class="deploy-step ${expert ? 'active' : 'locked'}" id="deployStep3">
+                    <div class="deploy-step-num">${expert ? '3' : '<i class="ph ph-lock-simple"></i>'}</div>
                     <div class="deploy-step-info">
                         <div class="deploy-step-title">模型部署</div>
                         <div class="deploy-step-desc">部署权重 + 修改配置</div>
                     </div>
                 </div>
                 <div class="deploy-step-connector"></div>
-                <div class="deploy-step locked" id="deployStep4">
-                    <div class="deploy-step-num"><i class="ph ph-lock-simple"></i></div>
+                <div class="deploy-step ${expert ? 'active' : 'locked'}" id="deployStep4">
+                    <div class="deploy-step-num">${expert ? '4' : '<i class="ph ph-lock-simple"></i>'}</div>
                     <div class="deploy-step-info">
                         <div class="deploy-step-title">参考音频</div>
                         <div class="deploy-step-desc">选择参考音频 + 情感</div>
                     </div>
                 </div>
                 <div class="deploy-step-connector"></div>
-                <div class="deploy-step locked" id="deployStep5">
-                    <div class="deploy-step-num"><i class="ph ph-lock-simple"></i></div>
+                <div class="deploy-step ${expert ? 'active' : 'locked'}" id="deployStep5">
+                    <div class="deploy-step-num">${expert ? '5' : '<i class="ph ph-lock-simple"></i>'}</div>
                     <div class="deploy-step-info">
                         <div class="deploy-step-title">启动测试</div>
                         <div class="deploy-step-desc">启动 API + 连接酒馆</div>
@@ -71,7 +73,7 @@ function updateDeployPage() {
                     <label class="form-label">GSVI 路径</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" class="form-input" id="deployGsviPath"
-                            placeholder="例如: D:\\GPT-SoVITS-Inference"
+                            placeholder="例如: D:\\\\GPT-SoVITS-Inference"
                             style="flex: 1;">
                         <button class="btn" onclick="browseGsviPath()" style="white-space: nowrap;">
                             <i class="ph ph-folder"></i> 浏览
@@ -90,7 +92,7 @@ function updateDeployPage() {
             </div>
 
             <!-- Step ② 环境准备 -->
-            <div class="slice-section" id="deployStepContent2" style="display: none;">
+            <div class="slice-section" id="deployStepContent2" style="${expert ? '' : 'display: none;'}">
                 <div class="slice-section-title"><i class="ph ph-hard-drives"></i>Step 2: 环境准备</div>
 
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
@@ -133,7 +135,7 @@ function updateDeployPage() {
             </div>
 
             <!-- Step ③ 模型部署 -->
-            <div class="slice-section" id="deployStepContent3" style="display: none;">
+            <div class="slice-section" id="deployStepContent3" style="${expert ? '' : 'display: none;'}">
                 <div class="slice-section-title"><i class="ph ph-cube"></i>Step 3: 模型部署</div>
 
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
@@ -170,7 +172,7 @@ function updateDeployPage() {
             </div>
 
             <!-- Step ④ 参考音频 -->
-            <div class="slice-section" id="deployStepContent4" style="display: none;">
+            <div class="slice-section" id="deployStepContent4" style="${expert ? '' : 'display: none;'}">
                 <div class="slice-section-title"><i class="ph ph-music-notes"></i>Step 4: 参考音频部署</div>
 
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
@@ -194,7 +196,7 @@ function updateDeployPage() {
             </div>
 
             <!-- Step ⑤ 锁定提示（显示到 Step 4 完成前） -->
-            <div class="slice-section" id="deployLockedHint" style="opacity: 0.5; pointer-events: none;">
+            <div class="slice-section" id="deployLockedHint" style="${expert ? 'display: none;' : 'opacity: 0.5; pointer-events: none;'}">
                 <div class="slice-section-title" style="color: var(--text-muted);">
                     <i class="ph ph-lock-simple"></i> 后续步骤
                 </div>
@@ -206,7 +208,7 @@ function updateDeployPage() {
             </div>
 
             <!-- Step ⑤ 启动测试 -->
-            <div class="slice-section" id="deployStepContent5" style="display: none;">
+            <div class="slice-section" id="deployStepContent5" style="${expert ? '' : 'display: none;'}">
                 <div class="slice-section-title"><i class="ph ph-rocket-launch"></i>Step 5: 启动测试</div>
 
                 <div class="inline-tip" style="margin-top: 0; margin-bottom: 14px;">
@@ -251,6 +253,14 @@ function updateDeployPage() {
 
     // 加载已保存的配置
     loadDeployConfig();
+
+    // Expert mode: auto-init all steps since they're all visible
+    if (expert) {
+        checkDeployEnv();
+        loadDeployModels();
+        loadRefAudioList();
+        checkInitialGsviStatus();
+    }
 }
 
 async function loadDeployConfig() {
@@ -842,15 +852,23 @@ async function loadRefAudioList() {
                             <i class="ph-fill ph-play"></i>
                         </button>
                         <span class="entry-duration ${durClass}">${a.duration_s}s</span>
-                        <span style="
+                        <span id="refEmotion${i}" style="
                             display: inline-flex; align-items: center; gap: 4px;
                             padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
                             background: rgba(251, 191, 36, 0.15); color: #fbbf24;
-                        ">${escapeHtml(a.emotion || 'default')}</span>
+                            cursor: pointer; transition: all 0.15s;
+                        " onclick="event.stopPropagation(); deployEditRefEmotion(${a.id}, '${escapeAttr(a.emotion || 'default')}', ${i})" title="点击编辑情感标签">${escapeHtml(a.emotion || 'default')}<i class="ph ph-pencil-simple" style="font-size: 11px; opacity: 0.6; margin-left: 2px;"></i></span>
                         <span class="entry-text" style="flex: 1; min-width: 0; cursor: default;">${escapeHtml(a.text || '（无文本）')}</span>
-                        <div class="entry-info">
+                        <div class="entry-info" style="display: flex; align-items: center; gap: 6px;">
                             <span class="entry-lang">${escapeHtml(a.lang || 'zh')}</span>
                             <span class="entry-filename" title="${escapeAttr(a.filename)}">${escapeHtml(a.filename)}</span>
+                            <button onclick="event.stopPropagation(); deployDeleteRefTag(${a.id}, '${escapeAttr(a.filename)}')" 
+                                style="display: inline-flex; align-items: center; gap: 4px; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: var(--accent-danger); cursor: pointer; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 6px; transition: all 0.15s; font-family: inherit; white-space: nowrap;"
+                                onmouseover="this.style.background='rgba(248,113,113,0.2)'; this.style.borderColor='var(--accent-danger)'"
+                                onmouseout="this.style.background='rgba(248,113,113,0.08)'; this.style.borderColor='rgba(248,113,113,0.2)'"
+                                title="取消标记此参考音频">
+                                <i class="ph ph-x-circle"></i> 取消标记
+                            </button>
                         </div>
                     </div>
                     `;
@@ -901,6 +919,166 @@ function deployPlayRefAudio(idx, path) {
         deployRefPlayingIdx = -1;
         deployRefAudioPlayer = null;
     };
+}
+
+const DEPLOY_EMOTION_PRESETS = [
+    { value: 'default', label: 'default (平静)' },
+    { value: 'happy', label: 'happy (开心)' },
+    { value: 'sad', label: 'sad (悲伤)' },
+    { value: 'angry', label: 'angry (生气)' },
+    { value: 'fear', label: 'fear (害怕)' },
+    { value: 'surprise', label: 'surprise (惊讶)' },
+    { value: 'disgust', label: 'disgust (厌恶)' },
+    { value: 'gentle', label: 'gentle (温柔)' },
+    { value: 'tender', label: 'tender (柔情)' },
+    { value: 'comfort', label: 'comfort (安慰)' },
+    { value: 'shy', label: 'shy (害羞)' },
+    { value: 'nervous', label: 'nervous (紧张)' },
+    { value: 'embarrassed', label: 'embarrassed (尴尬)' },
+    { value: 'whisper', label: 'whisper (耳语)' },
+    { value: 'shout', label: 'shout (大喊)' },
+    { value: 'murmur', label: 'murmur (低喃)' },
+    { value: 'sigh', label: 'sigh (叹息)' },
+    { value: 'cry', label: 'cry (哭泣)' },
+    { value: 'laugh', label: 'laugh (大笑)' },
+    { value: 'giggle', label: 'giggle (窃笑)' },
+    { value: 'tease', label: 'tease (调侃)' },
+    { value: 'serious', label: 'serious (严肃)' },
+    { value: 'cold', label: 'cold (冷淡)' },
+    { value: 'excited', label: 'excited (兴奋)' },
+    { value: 'confused', label: 'confused (困惑)' },
+    { value: 'sleepy', label: 'sleepy (困倦)' },
+    { value: 'seductive', label: 'seductive (魅惑)' },
+];
+
+async function deployEditRefEmotion(entryId, currentEmotion, idx) {
+    // Remove any existing picker
+    const existing = document.querySelector('.deploy-emotion-picker');
+    if (existing) existing.remove();
+
+    const btnEl = document.getElementById(`refEmotion${idx}`);
+    if (!btnEl) return;
+
+    const picker = document.createElement('div');
+    picker.className = 'deploy-emotion-picker';
+    picker.style.cssText = `
+        position: fixed; z-index: 600;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius); box-shadow: var(--shadow-lg);
+        padding: 12px; max-width: 420px; max-height: 400px; overflow-y: auto;
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    `;
+
+    // Hint
+    const hint = document.createElement('div');
+    hint.style.cssText = 'grid-column: 1 / -1; padding: 6px 10px; margin-bottom: 4px; border-radius: 6px; background: rgba(96, 165, 250, 0.08); border: 1px solid rgba(96, 165, 250, 0.2); font-size: 12px; color: var(--accent); display: flex; align-items: center; gap: 6px;';
+    hint.innerHTML = '<i class="ph ph-info" style="font-size: 14px; flex-shrink: 0;"></i> 恶灵低语用户必须使用下方预设情感，而非自定义';
+    picker.appendChild(hint);
+
+    // Preset buttons
+    DEPLOY_EMOTION_PRESETS.forEach(p => {
+        const btn = document.createElement('button');
+        btn.textContent = p.label;
+        btn.style.cssText = `
+            padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border);
+            background: ${p.value === currentEmotion ? 'var(--accent-dim)' : 'var(--bg-secondary)'};
+            color: ${p.value === currentEmotion ? 'var(--accent)' : 'var(--text-secondary)'};
+            font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: inherit;
+            text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        `;
+        btn.onmouseover = () => { btn.style.background = 'var(--accent-dim)'; btn.style.borderColor = 'var(--accent)'; btn.style.color = 'var(--accent)'; };
+        btn.onmouseout = () => { if (p.value !== currentEmotion) { btn.style.background = 'var(--bg-secondary)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text-secondary)'; } };
+        btn.onclick = async (e) => {
+            e.stopPropagation();
+            picker.remove();
+            await deployApplyEmotion(entryId, p.value);
+        };
+        picker.appendChild(btn);
+    });
+
+    // Custom input row
+    const customRow = document.createElement('div');
+    customRow.style.cssText = 'grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 4px;';
+    const customInput = document.createElement('input');
+    customInput.type = 'text';
+    customInput.placeholder = '自定义情感名称...';
+    customInput.value = currentEmotion;
+    customInput.style.cssText = 'flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
+    customInput.onclick = (e) => e.stopPropagation();
+    customInput.onkeydown = async (e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter' && customInput.value.trim()) {
+            picker.remove();
+            await deployApplyEmotion(entryId, customInput.value.trim());
+        }
+        if (e.key === 'Escape') picker.remove();
+    };
+    const customBtn = document.createElement('button');
+    customBtn.textContent = '确定';
+    customBtn.style.cssText = 'padding: 6px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #0f1117; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;';
+    customBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if (customInput.value.trim()) {
+            picker.remove();
+            await deployApplyEmotion(entryId, customInput.value.trim());
+        }
+    };
+    customRow.appendChild(customInput);
+    customRow.appendChild(customBtn);
+    picker.appendChild(customRow);
+
+    // Position near the emotion tag
+    const rect = btnEl.getBoundingClientRect();
+    picker.style.top = Math.min(rect.bottom + 4, window.innerHeight - 420) + 'px';
+    picker.style.left = Math.max(8, Math.min(rect.left - 100, window.innerWidth - 440)) + 'px';
+    document.body.appendChild(picker);
+
+    // Close on click outside
+    const closeHandler = (e) => {
+        if (!picker.contains(e.target) && e.target !== btnEl) {
+            picker.remove();
+            document.removeEventListener('click', closeHandler);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeHandler), 0);
+}
+
+async function deployApplyEmotion(entryId, emotion) {
+    try {
+        const res = await fetch('/api/annotate/ref_tag/batch_update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ updates: [{ id: entryId, emotion: emotion }] }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        showToast(`情感标签已更新为「${emotion}」`, 'success');
+        await loadRefAudioList();
+    } catch (err) {
+        showToast('更新失败: ' + err.message, 'error');
+    }
+}
+
+async function deployDeleteRefTag(entryId, filename) {
+    if (!confirm(`确定要取消标记「${filename}」为参考音频吗？\n\n该音频文件本身不会被删除，只是不再作为参考音频使用。`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch(`/api/annotate/ref_tag/${entryId}`, {
+            method: 'DELETE',
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        showToast(`已取消标记: ${filename}`, 'success');
+        await loadRefAudioList(); // refresh
+    } catch (err) {
+        showToast('取消标记失败: ' + err.message, 'error');
+    }
 }
 
 async function oneClickDeployRef() {

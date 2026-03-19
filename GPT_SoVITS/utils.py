@@ -65,11 +65,28 @@ from time import time as ttime
 
 
 def my_save(fea, path):  #####fix issue: torch.save doesn't support chinese path
+    import time as time_module
     dir = os.path.dirname(path)
     name = os.path.basename(path)
     tmp_path = "%s.pth" % (ttime())
     torch.save(fea, tmp_path)
-    shutil.move(tmp_path, "%s/%s" % (dir, name))
+    target = "%s/%s" % (dir, name)
+    # Retry logic for Windows file locking (PermissionError / WinError 32)
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(target):
+                os.remove(target)
+            shutil.move(tmp_path, target)
+            break
+        except PermissionError:
+            if attempt < max_retries - 1:
+                logger.info(f"File locked, retrying save ({attempt + 1}/{max_retries})... {name}")
+                time_module.sleep(1 + attempt)  # Wait 1s, 2s, 3s, 4s...
+            else:
+                logger.warning(f"Could not save {name} after {max_retries} attempts, keeping temp file: {tmp_path}")
+                # Don't crash training - just leave the temp file
+                break
 
 
 def save_checkpoint(model, optimizer, learning_rate, iteration, checkpoint_path):

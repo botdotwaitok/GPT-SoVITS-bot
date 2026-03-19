@@ -788,6 +788,542 @@
 
         ::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
+            border-radius: 3px;
+        }
+
+        /* ========== Quality Analysis ========== */
+        .quality-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .quality-badge.qb-clipping {
+            background: var(--accent-danger-dim);
+            color: var(--accent-danger);
+        }
+
+        .quality-badge.qb-loud {
+            background: rgba(251, 146, 60, 0.15);
+            color: #fb923c;
+        }
+
+        .quality-badge.qb-silent {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+
+        .quality-badge.qb-muffled {
+            background: rgba(167, 139, 250, 0.15);
+            color: #a78bfa;
+        }
+
+        .quality-badge.qb-noisy {
+            background: var(--accent-warning-dim);
+            color: var(--accent-warning);
+        }
+
+        .quality-badge.qb-spike {
+            background: rgba(244, 114, 182, 0.15);
+            color: #f472b6;
+        }
+
+        .quality-badge.qb-dc_offset {
+            background: rgba(45, 212, 191, 0.15);
+            color: #2dd4bf;
+        }
+
+        .quality-badge.qb-read_error,
+        .quality-badge.qb-analyze_error {
+            background: var(--accent-danger-dim);
+            color: var(--accent-danger);
+        }
+
+        .quality-filter-panel {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 28px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .quality-filter-panel.visible {
+            display: flex;
+        }
+
+        .quality-filter-panel label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .quality-filter-panel label i {
+            font-size: 18px;
+            color: var(--accent-warning);
+        }
+
+        .quality-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-family: inherit;
+        }
+
+        .quality-chip:hover {
+            border-color: var(--accent-warning);
+            background: var(--bg-card-hover);
+        }
+
+        .quality-chip.active {
+            border-color: var(--accent-warning);
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--accent-warning);
+        }
+
+        .quality-chip .chip-count {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1px 7px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .quality-chip.active .chip-count {
+            background: rgba(251, 191, 36, 0.2);
+        }
+
+        .quality-chip-clear {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid var(--accent);
+            background: var(--accent-dim);
+            color: var(--accent);
+            font-family: inherit;
+        }
+
+        .quality-chip-clear:hover {
+            background: var(--accent-glow);
+        }
+
+        .analysis-progress {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 28px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .analysis-progress.visible {
+            display: flex;
+        }
+
+        .progress-bar-wrap {
+            flex: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-success));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .entry-badges {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            max-width: 200px;
+        }
+
+        /* ========== Toggle Switch ========== */
+        .toggle-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            user-select: none;
+        }
+
+        .toggle-switch input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            background: var(--border);
+            border-radius: 11px;
+            transition: var(--transition);
+            flex-shrink: 0;
+        }
+
+        .toggle-slider::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 16px;
+            height: 16px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: var(--accent);
+        }
+
+        .toggle-switch input:checked+.toggle-slider::after {
+            transform: translateX(18px);
+            background: #fff;
+        }
+
+        .toggle-switch:hover .toggle-slider {
+            background: var(--border-light);
+        }
+
+        .toggle-switch:hover input:checked+.toggle-slider {
+            background: #7bb8fc;
+        }
+
+        /* ========== Toolbar Tooltips ========== */
+        .toolbar-tip-wrap {
+            position: relative;
+        }
+
+        .toolbar-tip {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lg);
+            padding: 10px 14px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+            animation: fadeIn 0.15s ease;
+        }
+
+        .toolbar-tip::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 8px;
+            height: 8px;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            border-left: 1px solid var(--border);
+        }
+
+        .toolbar-tip-wrap:hover .toolbar-tip {
+            display: block;
+        }
+
+        .toolbar-tip strong {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* ========== Concat Modal ========== */
+        .concat-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .concat-modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            width: 640px;
+            max-width: 90vw;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            animation: modalSlideIn 0.25s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .concat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .concat-header h2 {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .concat-header h2 i {
+            color: var(--accent);
+            font-size: 22px;
+        }
+
+        .concat-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 18px;
+        }
+
+        .concat-close:hover {
+            border-color: var(--accent-danger);
+            color: var(--accent-danger);
+            background: var(--accent-danger-dim);
+        }
+
+        .concat-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .concat-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .concat-empty i {
+            font-size: 40px;
+            margin-bottom: 12px;
+            display: block;
+            opacity: 0.5;
+        }
+
+        .concat-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: var(--transition);
+        }
+
+        .concat-group:hover {
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+
+        .concat-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .concat-group-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .concat-group-title .emotion-tag {
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+        }
+
+        .concat-group-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .concat-group-meta strong {
+            color: var(--accent);
+        }
+
+        .concat-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .concat-slider-row label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .concat-slider-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .concat-slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .concat-slider-val {
+            background: var(--bg-primary);
+            padding: 4px 10px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            min-width: 50px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .concat-clips-list {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .concat-clip-item {
+            padding: 3px 0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .concat-clip-dur {
+            color: var(--accent);
+            font-weight: 600;
+            min-width: 45px;
+        }
+
+        .concat-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .concat-result {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: var(--accent-success-dim);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--accent-success);
+            font-weight: 500;
+        }
+
+        .concat-result .result-info {
+            flex: 1;
         }
     </style>
 </head>
@@ -843,6 +1379,37 @@
             <button class="btn" id="btnSelectShort" onclick="selectByDuration('short')">选中过短</button>
             <button class="btn" id="btnSelectLong" onclick="selectByDuration('long')">选中过长</button>
         </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <div class="toolbar-tip-wrap">
+                <button class="btn" id="btnAnalyze" onclick="startAnalysis()"><i class="ph ph-shield-check"></i>
+                    智能质检</button>
+                <div class="toolbar-tip">
+                    <i class="ph ph-info" style="color: var(--accent); margin-right: 4px;"></i>
+                    自动检测音频中的<strong>爆音、杂音、音量异常</strong>等问题，帮你快速定位低质量片段
+                </div>
+            </div>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+            <div class="toolbar-tip-wrap">
+                <button class="btn" id="btnConcat" onclick="openConcatModal()"><i class="ph ph-link-simple"></i>
+                    拼接参考音频</button>
+                <div class="toolbar-tip">
+                    <i class="ph ph-info" style="color: var(--accent); margin-right: 4px;"></i>
+                    将多条<strong>短音频拼接成 3~10 秒</strong>的参考音频，供推理时使用。仅有一条时，将自动复制延长该音频。
+                </div>
+            </div>
+            <div class="toolbar-tip-wrap">
+                <button class="btn" id="btnExtractRef" onclick="openExtractModal()">
+                    <i class="ph ph-export"></i> 提取参考音频
+                </button>
+                <div class="toolbar-tip">
+                    <i class="ph ph-info" style="color: var(--accent); margin-right: 4px;"></i>
+                    将已标记的音频复制到 <strong>ref_audio/</strong> 文件夹，供推理和部署使用
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Duration Filter -->
@@ -871,6 +1438,22 @@
         </div>
     </div>
 
+    <!-- Analysis Progress Bar -->
+    <div class="analysis-progress" id="analysisProgress">
+        <i class="ph ph-spinner"
+            style="font-size: 18px; color: var(--accent); animation: spin 0.8s linear infinite;"></i>
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="analysisProgressFill"></div>
+        </div>
+        <span class="progress-text" id="analysisProgressText">分析中... 0%</span>
+    </div>
+
+    <!-- Quality Filter Panel -->
+    <div class="quality-filter-panel" id="qualityFilterPanel">
+        <label><i class="ph ph-shield-warning"></i> 质检筛选:</label>
+        <div id="qualityChips"></div>
+    </div>
+
     <!-- Main List -->
     <div class="main" id="mainList">
         <div class="loading-container" id="loadingState">
@@ -878,6 +1461,10 @@
             <div>正在加载音频数据...</div>
         </div>
     </div>
+
+    <!-- Concat Modal (hidden by default) -->
+    <div class="concat-overlay" id="concatOverlay" style="display:none"></div>
+    <div class="concat-overlay" id="extractOverlay" style="display:none"></div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
@@ -905,6 +1492,9 @@
         let lastClickedIndex = -1;     // for shift-click range select
         let focusedIndex = -1;         // for keyboard navigation
         let refTags = {};              // id -> {emotion, wav_path, ...}
+        let analysisResults = {};      // id_str -> [issue tags]
+        let analysisSummary = {};      // tag -> count
+        let activeQualityFilter = null; // currently active quality filter tag
         const audioPlayer = document.getElementById('audioPlayer');
 
         // ============== API ==============
@@ -981,6 +1571,14 @@
 
             filteredEntries = allEntries.filter(e => e.duration >= min && e.duration <= max);
 
+            // Apply quality filter if active
+            if (activeQualityFilter) {
+                filteredEntries = filteredEntries.filter(e => {
+                    const issues = analysisResults[String(e.id)];
+                    return issues && issues.includes(activeQualityFilter);
+                });
+            }
+
             document.getElementById('statFiltered').textContent = filteredEntries.length;
             document.getElementById('filterCount').textContent = filteredEntries.length;
             document.getElementById('filterTotal').textContent = allEntries.length;
@@ -1039,6 +1637,7 @@
                         <i class="${refTags[entry.id] ? 'ph-fill ph-star' : 'ph ph-star'}"></i>
                     </button>
                     ${refTags[entry.id] ? `<span class="ref-emotion-badge">${escapeHtml(refTags[entry.id].emotion)}</span>` : ''}
+                    ${renderQualityBadges(entry.id)}
                     <div class="entry-info">
                         <span class="entry-speaker">${escapeHtml(entry.speaker_name)}</span>
                         <span class="entry-lang">${escapeHtml(entry.language)}</span>
@@ -1432,6 +2031,513 @@
                 rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
+
+        // ============== Quality Analysis ==============
+        const QUALITY_TAG_LABELS = {
+            clipping: '疑似爆音',
+            loud: '音量过大',
+            silent: '音量过低',
+            muffled: '疑似闷声',
+            noisy: '底噪较高',
+            spike: '峰值尖刺',
+            dc_offset: '直流偏移',
+            read_error: '读取失败',
+            analyze_error: '分析失败',
+            empty: '空文件',
+        };
+
+        function renderQualityBadges(id) {
+            const issues = analysisResults[String(id)];
+            if (!issues || issues.length === 0) return '';
+            return '<div class="entry-badges">' + issues.map(tag =>
+                `<span class="quality-badge qb-${escapeHtml(tag)}">${escapeHtml(QUALITY_TAG_LABELS[tag] || tag)}</span>`
+            ).join('') + '</div>';
+        }
+
+        function renderQualityChips() {
+            const panel = document.getElementById('qualityFilterPanel');
+            const container = document.getElementById('qualityChips');
+            if (!analysisSummary || Object.keys(analysisSummary).length === 0) {
+                panel.classList.remove('visible');
+                return;
+            }
+            panel.classList.add('visible');
+
+            let html = '';
+            for (const [tag, count] of Object.entries(analysisSummary)) {
+                const label = QUALITY_TAG_LABELS[tag] || tag;
+                const isActive = activeQualityFilter === tag;
+                html += `<button class="quality-chip ${isActive ? 'active' : ''}" onclick="toggleQualityFilter('${escapeHtml(tag)}')">
+                    ${escapeHtml(label)} <span class="chip-count">${count}</span>
+                </button>`;
+            }
+            html += `<button class="quality-chip-clear" onclick="clearQualityFilter()"><i class="ph ph-x"></i> 显示全部</button>`;
+            container.innerHTML = html;
+        }
+
+        function toggleQualityFilter(tag) {
+            if (activeQualityFilter === tag) {
+                activeQualityFilter = null;
+            } else {
+                activeQualityFilter = tag;
+            }
+            renderQualityChips();
+            applyFilter();
+        }
+
+        function clearQualityFilter() {
+            activeQualityFilter = null;
+            renderQualityChips();
+            applyFilter();
+        }
+
+        let analysisPollTimer = null;
+
+        async function startAnalysis() {
+            const btn = document.getElementById('btnAnalyze');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="ph ph-spinner" style="animation: spin 0.8s linear infinite;"></i> 分析中...';
+
+            try {
+                await apiPost('/api/annotate/analyze', {});
+                showToast('质检分析已启动', 'info');
+                document.getElementById('analysisProgress').classList.add('visible');
+                pollAnalysisStatus();
+            } catch (err) {
+                showToast('启动分析失败: ' + err.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '智能质检';
+            }
+        }
+
+        function pollAnalysisStatus() {
+            if (analysisPollTimer) clearInterval(analysisPollTimer);
+            analysisPollTimer = setInterval(async () => {
+                try {
+                    const data = await apiGet('/api/annotate/analyze/status');
+                    const fill = document.getElementById('analysisProgressFill');
+                    const text = document.getElementById('analysisProgressText');
+                    fill.style.width = data.progress + '%';
+                    text.textContent = `分析中... ${data.processed}/${data.total} (${data.progress}%)`;
+
+                    if (data.status === 'done') {
+                        clearInterval(analysisPollTimer);
+                        analysisPollTimer = null;
+                        analysisResults = data.results || {};
+                        analysisSummary = data.summary || {};
+                        document.getElementById('analysisProgress').classList.remove('visible');
+
+                        const btn = document.getElementById('btnAnalyze');
+                        btn.disabled = false;
+                        btn.innerHTML = '智能质检';
+
+                        const issueCount = Object.keys(analysisResults).length;
+                        if (issueCount > 0) {
+                            showToast(`质检完成：发现 ${issueCount} 条疑似问题音频`, 'info');
+                        } else {
+                            showToast('质检完成：所有音频质量良好', 'success');
+                        }
+
+                        renderQualityChips();
+                        renderList();
+                    } else if (data.status === 'error') {
+                        clearInterval(analysisPollTimer);
+                        analysisPollTimer = null;
+                        document.getElementById('analysisProgress').classList.remove('visible');
+                        const btn = document.getElementById('btnAnalyze');
+                        btn.disabled = false;
+                        btn.innerHTML = '智能质检';
+                        showToast('分析出错: ' + (data.error || '未知错误'), 'error');
+                    }
+                } catch (err) {
+                    // Silently continue polling
+                }
+            }, 800);
+        }
+
+        // ============== Concat Modal ==============
+        let concatPreviewData = {};  // emotion -> { clips, total_duration, count }
+
+        async function openConcatModal() {
+            const overlay = document.getElementById('concatOverlay');
+            overlay.style.display = 'flex';
+
+            // Show loading state
+            overlay.innerHTML = `
+                <div class="concat-modal">
+                    <div class="concat-header">
+                        <h2>拼接参考音频</h2>
+                        <button class="concat-close" onclick="closeConcatModal()"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="concat-body">
+                        <div style="text-align:center; padding:40px;"><div class="loading-spinner"></div><div>加载中...</div></div>
+                    </div>
+                </div>`;
+
+            try {
+                const data = await apiGet('/api/annotate/ref_concat_preview');
+                concatPreviewData = data.groups || {};
+                renderConcatModal();
+            } catch (err) {
+                overlay.innerHTML = `
+                    <div class="concat-modal">
+                        <div class="concat-header">
+                            <h2>拼接参考音频</h2>
+                            <button class="concat-close" onclick="closeConcatModal()"><i class="ph ph-x"></i></button>
+                        </div>
+                        <div class="concat-body">
+                            <div class="concat-empty"><i class="ph ph-warning-circle"></i><div>加载失败: ${escapeHtml(err.message)}</div></div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function renderConcatModal() {
+            const overlay = document.getElementById('concatOverlay');
+            const emotions = Object.keys(concatPreviewData);
+
+            if (emotions.length === 0) {
+                overlay.innerHTML = `
+                    <div class="concat-modal">
+                        <div class="concat-header">
+                            <h2>拼接参考音频</h2>
+                            <button class="concat-close" onclick="closeConcatModal()"><i class="ph ph-x"></i></button>
+                        </div>
+                        <div class="concat-body">
+                            <div class="concat-empty">
+                                <i class="ph ph-tag"></i>
+                                <div style="font-size:16px; margin-bottom:8px;">没有可拼接的短音频</div>
+                                <div style="font-size:14px;">请先在标注列表中标记几条短音频为参考音频（点击星标按钮）</div>
+                            </div>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            let groupsHtml = '';
+            for (const emotion of emotions) {
+                const group = concatPreviewData[emotion];
+                const clipsHtml = group.clips.map(c =>
+                    `<div class="concat-clip-item">
+                        <span class="concat-clip-dur">${c.duration}s</span>
+                        <span>${escapeHtml(c.text || '(无文本)')}</span>
+                    </div>`
+                ).join('');
+
+                groupsHtml += `
+                    <div class="concat-group" id="concatGroup_${escapeHtml(emotion)}">
+                        <div class="concat-group-header">
+                            <div class="concat-group-title">
+                                <span class="emotion-tag">${escapeHtml(emotion)}</span>
+                            </div>
+                            <div class="concat-group-meta">
+                                <span>片段: <strong>${group.count}</strong></span>
+                                <span>总时长: <strong>${group.total_duration}s</strong></span>
+                            </div>
+                        </div>
+                        <div class="concat-slider-row">
+                            <label>目标时长</label>
+                            <input type="range" min="3" max="9" step="0.5" value="5"
+                                   id="concatSlider_${escapeHtml(emotion)}"
+                                   oninput="document.getElementById('concatSliderVal_${escapeHtml(emotion)}').textContent = this.value + 's'">
+                            <span class="concat-slider-val" id="concatSliderVal_${escapeHtml(emotion)}">5s</span>
+                        </div>
+                        <div class="concat-clips-list">${clipsHtml}</div>
+                        <div class="concat-actions">
+                            <button class="btn btn-primary" onclick="doConcatRef('${escapeHtml(emotion)}')">
+                                <i class="ph ph-link-simple"></i> 拼接
+                            </button>
+                        </div>
+                        <div id="concatResult_${escapeHtml(emotion)}"></div>
+                    </div>`;
+            }
+
+            overlay.innerHTML = `
+                <div class="concat-modal">
+                    <div class="concat-header">
+                        <h2>拼接参考音频</h2>
+                        <button class="concat-close" onclick="closeConcatModal()"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="concat-body">${groupsHtml}</div>
+                </div>`;
+        }
+
+        async function doConcatRef(emotion) {
+            const slider = document.getElementById('concatSlider_' + emotion);
+            const targetDuration = slider ? parseFloat(slider.value) : 5.0;
+            const resultEl = document.getElementById('concatResult_' + emotion);
+
+            // Find the concat button and disable it
+            const group = document.getElementById('concatGroup_' + emotion);
+            const btn = group ? group.querySelector('.btn-primary') : null;
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner" style="animation: spin 0.8s linear infinite;"></i> 拼接中...';
+            }
+
+            try {
+                const data = await apiPost('/api/annotate/concat_ref', {
+                    emotion: emotion,
+                    target_duration: targetDuration,
+                });
+
+                if (resultEl) {
+                    resultEl.innerHTML = `
+                        <div class="concat-result">
+                            <button class="entry-play" onclick="event.stopPropagation(); playConcatResult(this, '${escapeHtml(data.path)}')" title="试听">
+                                <i class="ph-fill ph-play"></i>
+                            </button>
+                            <div class="result-info">
+                                <div><strong>${escapeHtml(data.filename)}</strong> (${data.duration}s, ${data.clips_used}个片段)</div>
+                                <div style="font-size:12px; margin-top:2px; opacity:0.8;">${escapeHtml(data.text)}</div>
+                            </div>
+                        </div>`;
+                }
+
+                if (resultEl) {
+                    // Add remove-source checkbox after result
+                    const removeDiv = document.createElement('div');
+                    removeDiv.style.cssText = 'margin-top:10px; display:flex; align-items:center; gap:10px; font-size:13px;';
+                    removeDiv.innerHTML = `
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="concatRemove_${escapeHtml(emotion)}">
+                            <span class="toggle-slider"></span>
+                            从训练集移除已拼接的原始片段
+                        </label>
+                        <button class="btn" style="font-size:12px; padding:4px 12px;" onclick="removeConcatSources('${escapeHtml(emotion)}')">执行移除</button>
+                    `;
+                    resultEl.appendChild(removeDiv);
+                }
+
+                showToast('拼接成功！已保存到 ref_audio/ 目录', 'success');
+            } catch (err) {
+                showToast('拼接失败: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ph ph-link-simple"></i> 拼接';
+                }
+            }
+        }
+
+        function playConcatResult(btnEl, path) {
+            const icon = btnEl.querySelector('i');
+            if (audioPlayer.src && audioPlayer.src.includes(encodeURIComponent(path)) && !audioPlayer.paused) {
+                audioPlayer.pause();
+                icon.className = 'ph-fill ph-play';
+                btnEl.classList.remove('playing-btn');
+                return;
+            }
+            // Stop any other playing
+            currentPlayingId = null;
+            audioPlayer.src = '/api/annotate/audio?path=' + encodeURIComponent(path);
+            audioPlayer.play().catch(err => showToast('播放失败: ' + err.message, 'error'));
+            icon.className = 'ph-fill ph-pause';
+            btnEl.classList.add('playing-btn');
+
+            audioPlayer.onended = () => {
+                icon.className = 'ph-fill ph-play';
+                btnEl.classList.remove('playing-btn');
+            };
+        }
+
+        function closeConcatModal() {
+            const overlay = document.getElementById('concatOverlay');
+            overlay.style.display = 'none';
+            overlay.innerHTML = '';
+        }
+
+        async function removeConcatSources(emotion) {
+            const cb = document.getElementById('concatRemove_' + emotion);
+            if (!cb || !cb.checked) {
+                showToast('请先勾选确认框', 'error');
+                return;
+            }
+            try {
+                const preview = concatPreviewData[emotion];
+                if (!preview || !preview.clips) return;
+                const ids = preview.clips.map(c => c.id).filter(id => id !== undefined);
+                if (ids.length === 0) {
+                    showToast('没有找到可移除的条目', 'error');
+                    return;
+                }
+                await apiPost('/api/annotate/delete', { ids });
+                showToast(`已从训练集移除 ${ids.length} 条原始片段`, 'success');
+                await loadAnnotateData();
+            } catch (err) {
+                showToast('移除失败: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // Extract Ref Audio Modal
+        // ============================================================
+
+        async function openExtractModal() {
+            const overlay = document.getElementById('extractOverlay');
+            overlay.style.display = 'flex';
+            overlay.innerHTML = `
+                <div class="concat-modal">
+                    <div class="concat-header">
+                        <h2><i class="ph ph-export"></i> 提取参考音频</h2>
+                        <button class="concat-close" onclick="closeExtractModal()"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="concat-body">
+                        <div style="text-align:center; padding:40px;"><div class="loading-spinner"></div><div>加载中...</div></div>
+                    </div>
+                </div>`;
+
+            try {
+                const data = await apiGet('/api/annotate/ref_tags');
+                const tags = data.tags || {};
+                const tagEntries = Object.entries(tags);
+
+                if (tagEntries.length === 0) {
+                    overlay.innerHTML = `
+                        <div class="concat-modal">
+                            <div class="concat-header">
+                                <h2><i class="ph ph-export"></i> 提取参考音频</h2>
+                                <button class="concat-close" onclick="closeExtractModal()"><i class="ph ph-x"></i></button>
+                            </div>
+                            <div class="concat-body">
+                                <div class="concat-empty">
+                                    <i class="ph ph-tag"></i>
+                                    <div style="font-size:16px; margin-bottom:8px;">没有已标记的参考音频</div>
+                                    <div style="font-size:14px;">请先在标注列表中标记音频为参考音频（点击星标按钮）</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    return;
+                }
+
+                // Group by emotion
+                const groups = {};
+                for (const [id, info] of tagEntries) {
+                    const em = info.emotion || 'default';
+                    if (!groups[em]) groups[em] = [];
+                    groups[em].push({ id, text: info.text || '', duration: info.duration || 0 });
+                }
+
+                let groupsHtml = '';
+                for (const [em, clips] of Object.entries(groups)) {
+                    const clipsHtml = clips.map(c =>
+                        `<div class="concat-clip-item">
+                            <span class="concat-clip-dur">${c.duration}s</span>
+                            <span>${escapeHtml(c.text || '(无文本)')}</span>
+                        </div>`
+                    ).join('');
+
+                    groupsHtml += `
+                        <div class="concat-group">
+                            <div class="concat-group-header">
+                                <div class="concat-group-title">
+                                    <span class="emotion-tag">${escapeHtml(em)}</span>
+                                </div>
+                                <div class="concat-group-meta">
+                                    <span>片段: <strong>${clips.length}</strong></span>
+                                </div>
+                            </div>
+                            <div class="concat-clips-list">${clipsHtml}</div>
+                        </div>`;
+                }
+
+                overlay.innerHTML = `
+                    <div class="concat-modal">
+                        <div class="concat-header">
+                            <h2><i class="ph ph-export"></i> 提取参考音频</h2>
+                            <button class="concat-close" onclick="closeExtractModal()"><i class="ph ph-x"></i></button>
+                        </div>
+                        <div class="concat-body">
+                            <div style="padding:12px 16px; font-size:14px; opacity:0.85;">
+                                将以下 <strong>${tagEntries.length}</strong> 条已标记音频复制到 <code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">ref_audio/</code> 目录
+                            </div>
+                            ${groupsHtml}
+                            <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="extractRemoveTraining">
+                                    <span class="toggle-slider"></span>
+                                    提取后从训练集移除这些条目
+                                </label>
+                                <button class="btn btn-primary" id="btnDoExtract" onclick="doExtractRef()">
+                                    <i class="ph ph-export"></i> 确认提取 (${tagEntries.length} 条)
+                                </button>
+                            </div>
+                        </div>
+                    </div>`;
+
+            } catch (err) {
+                overlay.innerHTML = `
+                    <div class="concat-modal">
+                        <div class="concat-header">
+                            <h2>提取参考音频</h2>
+                            <button class="concat-close" onclick="closeExtractModal()"><i class="ph ph-x"></i></button>
+                        </div>
+                        <div class="concat-body">
+                            <div class="concat-empty"><i class="ph ph-warning-circle"></i><div>加载失败: ${escapeHtml(err.message)}</div></div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        function closeExtractModal() {
+            const overlay = document.getElementById('extractOverlay');
+            overlay.style.display = 'none';
+            overlay.innerHTML = '';
+        }
+
+        async function doExtractRef() {
+            const btn = document.getElementById('btnDoExtract');
+            const removeCheckbox = document.getElementById('extractRemoveTraining');
+            const removeFromTraining = removeCheckbox ? removeCheckbox.checked : false;
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ph ph-spinner" style="animation: spin 0.8s linear infinite;"></i> 提取中...';
+            }
+
+            try {
+                const data = await apiPost('/api/annotate/extract_ref', {
+                    remove_from_training: removeFromTraining
+                });
+
+                let msg = `成功提取 ${data.extracted} 条到 ref_audio/`;
+                if (data.removed_from_training > 0) {
+                    msg += `，已从训练集移除 ${data.removed_from_training} 条`;
+                }
+                if (data.errors && data.errors.length > 0) {
+                    msg += `\n⚠️ ${data.errors.length} 个错误`;
+                }
+                showToast(msg, 'success');
+                closeExtractModal();
+
+                if (data.removed_from_training > 0) {
+                    await loadAnnotateData();
+                }
+            } catch (err) {
+                showToast('提取失败: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ph ph-export"></i> 确认提取';
+                }
+            }
+        }
+
+        // Close modal on Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const concatOv = document.getElementById('concatOverlay');
+                if (concatOv && concatOv.style.display !== 'none') {
+                    closeConcatModal();
+                    return;
+                }
+                const extractOv = document.getElementById('extractOverlay');
+                if (extractOv && extractOv.style.display !== 'none') {
+                    closeExtractModal();
+                    return;
+                }
+            }
+        });
 
         // ============== Start ==============
         init();

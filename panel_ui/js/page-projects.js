@@ -26,19 +26,26 @@ function renderProjects() {
         `;
 
     // Existing projects
+    const langMap = {zh:'中文',en:'EN',ja:'日本語',yue:'粤语',ko:'한국어'};
     projects.forEach(p => {
         const isActive = p.name === activeProject;
         const steps = p.steps || {};
-        const totalSteps = Object.keys(steps).length;
-        const doneSteps = Object.values(steps).filter(s => s.status === 'done').length;
+        // Exclude 'infer' from progress — it's an ongoing testing tool, not a completable step
+        const trainingSteps = Object.entries(steps).filter(([k]) => k !== 'infer');
+        const totalSteps = trainingSteps.length;
+        const doneSteps = trainingSteps.filter(([, s]) => s.status === 'done').length;
         const progressPct = totalSteps > 0 ? Math.round((doneSteps / totalSteps) * 100) : 0;
 
         const date = p.created_at ? new Date(p.created_at).toLocaleDateString('zh-CN') : '未知';
         const eName = escapeAttr(p.name);
+        const langLabel = langMap[p.language] || p.language || '中文';
 
         html += `
                 <div class="project-card ${isActive ? 'active-project' : ''}" onclick="switchProject('${eName}')">
                     <div class="project-card-actions">
+                        <button class="card-action-btn" onclick="event.stopPropagation(); openProjectEdit('${eName}')" title="编辑项目">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
                         <button class="card-action-btn" onclick="event.stopPropagation(); exportProject('${eName}')" title="导出项目">
                             <i class="ph ph-download-simple"></i>
                         </button>
@@ -47,7 +54,7 @@ function renderProjects() {
                         </button>
                     </div>
                     <div class="project-card-name">${escapeHtml(p.name)}</div>
-                    <div class="project-card-version">${escapeHtml(p.version || 'v2Pro')}</div>
+                    <div class="project-card-version">${escapeHtml(p.version || 'v2Pro')} · ${escapeHtml(langLabel)}</div>
                     <div class="project-card-progress">
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" style="width: ${progressPct}%"></div>
@@ -62,9 +69,38 @@ function renderProjects() {
     grid.innerHTML = html;
 }
 
+// =====================================================
+//  Edit Project (modal)
+// =====================================================
+let editingProjectName = '';
+
+function openProjectEdit(name) {
+    editingProjectName = name;
+    const proj = projects.find(p => p.name === name);
+    document.getElementById('editProjectLabel').textContent = `项目：${name}`;
+    document.getElementById('editProjectLanguage').value = (proj && proj.language) || 'zh';
+    openModal('modalEditProject');
+}
+
+async function saveProjectEdit() {
+    const newLang = document.getElementById('editProjectLanguage').value;
+
+    try {
+        await apiPost(`/api/project/${encodeURIComponent(editingProjectName)}/update`, {
+            language: newLang,
+        });
+        showToast('项目语言已更新', 'success');
+        closeModal('modalEditProject');
+        await loadProjects();
+    } catch (err) {
+        showToast('保存失败: ' + err.message, 'error');
+    }
+}
+
 async function createProject() {
     const name = document.getElementById('newProjectName').value.trim();
     const version = document.getElementById('newProjectVersion').value;
+    const language = document.getElementById('newProjectLanguage').value;
 
     if (!name) {
         showToast('请输入项目名称', 'error');
@@ -72,7 +108,7 @@ async function createProject() {
     }
 
     try {
-        await apiPost('/api/project/create', { name, version });
+        await apiPost('/api/project/create', { name, version, language });
         showToast(`项目「${name}」创建成功！`, 'success');
         closeModal('modalNewProject');
         document.getElementById('newProjectName').value = '';
@@ -257,7 +293,7 @@ function updateStepStatus() {
             } else if (status === 'running' || status === 'wip') {
                 badge.className = 'sidebar-badge badge-wip';
                 badge.textContent = '进行中';
-            } else if (page === 'annotate') {
+            } else if (page === 'annotate' || page === 'infer') {
                 badge.className = 'sidebar-badge badge-future';
                 badge.textContent = '可选';
             } else {

@@ -138,22 +138,22 @@
             </div>
 
             <!-- ====== Step 2: GPT ====== -->
-            <div class="train-step-card locked" id="trainStepGpt">
+            <div class="train-step-card ${isExpertMode() ? 'active' : 'locked'}" id="trainStepGpt">
                 <div class="train-step-header" id="trainStepGptHeader">
                     <div class="train-step-number">2</div>
                     <div class="train-step-title"><i class="ph ph-brain" style="margin-right:6px; color: var(--accent);"></i>GPT 训练</div>
-                    <span class="train-step-badge badge-locked" id="trainBadgeGpt">
-                        <i class="ph ph-lock"></i> 待解锁
+                    <span class="train-step-badge ${isExpertMode() ? 'badge-active' : 'badge-locked'}" id="trainBadgeGpt">
+                        ${isExpertMode() ? '<i class="ph ph-arrow-right"></i> 可用' : '<i class="ph ph-lock"></i> 待解锁'}
                     </span>
                 </div>
                 <div class="train-step-body" id="trainBodyGpt">
-                    <div class="train-locked-msg" id="trainGptLockedMsg">
+                    <div class="train-locked-msg" id="trainGptLockedMsg" style="${isExpertMode() ? 'display:none' : ''}">
                         <i class="ph ph-lock"></i>
                         <span>请先完成上方的 SoVITS 训练，之后 GPT 训练将自动解锁。</span>
                     </div>
 
                     <!-- GPT 参数和操作（初始隐藏） -->
-                    <div id="trainGptContent" style="display: none;">
+                    <div id="trainGptContent" style="display: ${isExpertMode() ? '' : 'none'};">
                         <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px;">
                             训练语义模型，控制语调和断句。SoVITS 已完成，现在开始第二步！
                         </div>
@@ -287,17 +287,17 @@
             if (!stepSovits || !stepGpt) return;
 
             if (phase === 'sovits') {
-                // SoVITS active, GPT locked
+                // SoVITS active, GPT locked (or active in expert mode)
                 stepSovits.className = 'train-step-card active';
-                stepGpt.className = 'train-step-card locked';
+                stepGpt.className = isExpertMode() ? 'train-step-card active' : 'train-step-card locked';
                 badgeSovits.className = 'train-step-badge badge-active';
                 badgeSovits.innerHTML = '<i class="ph ph-arrow-right"></i> 当前步骤';
-                badgeGpt.className = 'train-step-badge badge-locked';
-                badgeGpt.innerHTML = '<i class="ph ph-lock"></i> 待解锁';
+                badgeGpt.className = isExpertMode() ? 'train-step-badge badge-active' : 'train-step-badge badge-locked';
+                badgeGpt.innerHTML = isExpertMode() ? '<i class="ph ph-arrow-right"></i> 可用' : '<i class="ph ph-lock"></i> 待解锁';
                 if (bodySovits) bodySovits.style.display = '';
                 if (headerSovits) headerSovits.classList.remove('no-mb');
-                if (gptLockedMsg) gptLockedMsg.style.display = '';
-                if (gptContent) gptContent.style.display = 'none';
+                if (gptLockedMsg) gptLockedMsg.style.display = isExpertMode() ? 'none' : '';
+                if (gptContent) gptContent.style.display = isExpertMode() ? '' : 'none';
                 if (completionArea) completionArea.style.display = 'none';
             } else if (phase === 'gpt') {
                 // SoVITS completed, GPT active
@@ -414,26 +414,38 @@
                         setTrainPhase('sovits');
                     }
                 } else {
-                    el.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
-                        <i class="ph ph-warning" style="font-size: 20px;"></i>
-                        <span>${escapeHtml(data.reason)}</span>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button class="btn" onclick="navigateTo('format')">
-                            <i class="ph ph-arrow-left"></i> 先去完成格式化
-                        </button>
-                    </div>
-                `;
-                    trainDataReady = false;
-                    if (btnSovits) btnSovits.disabled = true;
+                    if (isExpertMode()) {
+                        el.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
+                            <i class="ph ph-warning" style="font-size: 20px;"></i>
+                            <span>${escapeHtml(data.reason)}</span>
+                            <span class="expert-mode-badge"><i class="ph ph-rocket-launch"></i> 自由模式 — 不阻止操作</span>
+                        </div>
+                    `;
+                        trainDataReady = false;
+                        if (btnSovits) btnSovits.disabled = false;
+                    } else {
+                        el.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 8px; color: var(--accent-warning);">
+                            <i class="ph ph-warning" style="font-size: 20px;"></i>
+                            <span>${escapeHtml(data.reason)}</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn" onclick="navigateTo('format')">
+                                <i class="ph ph-arrow-left"></i> 先去完成格式化
+                            </button>
+                        </div>
+                    `;
+                        trainDataReady = false;
+                        if (btnSovits) btnSovits.disabled = true;
+                    }
                 }
                 updateSovitsRecommendedText();
                 updateGptRecommendedText();
             } catch (err) {
                 el.innerHTML = `<span style="color: var(--accent-danger);">检查失败: ${escapeHtml(err.message)}</span>`;
                 trainDataReady = false;
-                if (btnSovits) btnSovits.disabled = true;
+                if (btnSovits) btnSovits.disabled = isExpertMode() ? false : true;
             }
         }
 

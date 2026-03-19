@@ -2118,3 +2118,333 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        /* ==================== Split Method Tooltip ==================== */
+        .split-method-tip-trigger:hover > i {
+            opacity: 1;
+        }
+
+        .split-method-tip-popup {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: -60px;
+            width: 300px;
+            padding: 16px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            pointer-events: none;
+            animation: tooltipFadeIn 0.15s ease;
+        }
+
+        .split-method-tip-trigger:hover .split-method-tip-popup {
+            display: block;
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .deploy-step.done .deploy-step-desc {
+            color: var(--text-secondary);
+            opacity: 1;
+        }
+
+        .deploy-step.locked {
+            opacity: 0.5;
+        }
+
+        .deploy-step.locked .deploy-step-num i {
+            font-size: 14px;
+        }
+
+        .deploy-step-connector {
+            width: 20px;
+            height: 2px;
+            background: var(--border);
+            flex-shrink: 0;
+        }
+
+        .deploy-step.done + .deploy-step-connector {
+            background: var(--accent-success);
+        }
+
+        /* ==================== Audio Entry Row (from Annotate) ==================== */
+        .entry-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            margin-bottom: 6px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        .entry-row:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(96, 165, 250, 0.3);
+        }
+        .entry-row.selected {
+            background: var(--bg-card-selected);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent-glow);
+        }
+        .entry-row.playing {
+            border-color: var(--accent-success);
+            box-shadow: 0 0 12px rgba(74, 222, 128, 0.15);
+        }
+
+        /* Big checkbox */
+        .entry-check {
+            flex-shrink: 0;
+            width: 28px;
+            height: 28px;
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--bg-primary);
+            border: 2px solid var(--text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            transition: var(--transition);
+            margin: 0;
+        }
+        .entry-check:hover { border-color: var(--accent); }
+        .entry-check:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .entry-check:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0f1117;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* Entry index */
+        .entry-index {
+            flex-shrink: 0;
+            width: 44px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: center;
+        }
+
+        /* Play button */
+        .entry-play {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            background: var(--accent-dim);
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 18px;
+            padding: 0;
+            min-width: 0;
+        }
+        .entry-play:hover {
+            background: var(--accent-glow);
+            transform: scale(1.1);
+        }
+        .entry-play.playing-btn {
+            border-color: var(--accent-success);
+            color: var(--accent-success);
+            background: var(--accent-success-dim);
+            animation: pulse-play 1.5s infinite;
+        }
+        @keyframes pulse-play {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.3); }
+            50% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+        }
+
+        /* Duration badge */
+        .entry-duration {
+            flex-shrink: 0;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+        .duration-short { background: var(--accent-danger-dim); color: var(--accent-danger); }
+        .duration-ok { background: var(--accent-success-dim); color: var(--accent-success); }
+        .duration-long { background: var(--accent-warning-dim); color: var(--accent-warning); }
+
+        /* Entry text (editable) */
+        .entry-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 15px;
+            color: var(--text-primary);
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            outline: none;
+            font-family: inherit;
+            transition: var(--transition);
+        }
+        .entry-text:hover { border-color: var(--border); }
+        .entry-text:focus {
+            border-color: var(--accent);
+            background: var(--bg-primary);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* Entry info */
+        .entry-info {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            min-width: 120px;
+        }
+        .entry-speaker { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .entry-lang {
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 2px 8px;
+            background: var(--accent-dim);
+            border-radius: 10px;
+        }
+        .entry-filename {
+            font-size: 12px;
+            color: var(--text-muted);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        /* ==================== Split Method Tooltip ==================== */
+        .split-method-tip-trigger:hover > i {
+            opacity: 1;
+        }
+
+        .split-method-tip-popup {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: -60px;
+            width: 300px;
+            padding: 16px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            pointer-events: none;
+            animation: tooltipFadeIn 0.15s ease;
+        }
+
+        .split-method-tip-trigger:hover .split-method-tip-popup {
+            display: block;
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ==================== Mode Switcher ==================== */
+        .sidebar-spacer {
+            flex: 1;
+        }
+
+        .mode-switcher {
+            padding: 12px 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mode-switcher-top {
+            border-top: none;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mode-switcher-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mode-switcher-label i {
+            font-size: 14px;
+        }
+
+        .mode-switch-group {
+            display: flex;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            border: 1px solid var(--border);
+        }
+
+        .mode-switch-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            padding: 7px 10px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .mode-switch-btn:hover {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .mode-switch-btn.active {
+            background: var(--accent-dim);
+            color: var(--accent);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .mode-switch-btn i {
+            font-size: 15px;
+        }
+
+        /* Expert mode badge shown in prerequisite checks */
+        .expert-mode-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 10px;
+            background: var(--accent-purple-dim);
+            color: var(--accent-purple);
+        }

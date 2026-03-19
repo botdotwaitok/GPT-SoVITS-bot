@@ -5,6 +5,101 @@
         let activeProject = null;
         let currentPage = 'projects';
 
+        /** 获取当前活跃项目的语言设置，找不到则返回 'zh' */
+        function getActiveProjectLanguage() {
+            if (!activeProject) return 'zh';
+            const proj = projects.find(p => p.name === activeProject);
+            return (proj && proj.language) ? proj.language : 'zh';
+        }
+
+        // ---- Dual Mode: guided (beginner) / expert (free) ----
+        let panelMode = localStorage.getItem('panelMode') || 'guided';
+
+        function isExpertMode() {
+            return panelMode === 'expert';
+        }
+
+        function togglePanelMode(mode) {
+            if (panelMode === mode) return; // already in this mode
+
+            const title = document.getElementById('modeSwitchTitle');
+            const body = document.getElementById('modeSwitchBody');
+            const confirmBtn = document.getElementById('btnConfirmModeSwitch');
+
+            if (mode === 'expert') {
+                title.innerHTML = '<i class="ph ph-rocket-launch" style="margin-right: 6px; color: var(--accent);"></i>切换到自由模式？';
+                body.innerHTML = `
+                    <div style="margin-bottom: 14px;">自由模式适合<b>有经验的用户</b>，所有功能全解锁：</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-lock-simple-open" style="color: var(--accent-success); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>所有步骤<b>不再锁定</b>，可按任意顺序操作</span>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-warning" style="color: var(--accent-warning); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>不会阻止跳步操作，<b>可能导致错误</b>（如未切分就格式化）</span>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-user-circle-gear" style="color: var(--text-muted); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>适合已经熟悉训练流程的用户</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                title.innerHTML = '<i class="ph ph-compass" style="margin-right: 6px; color: var(--accent);"></i>切换到引导模式？';
+                body.innerHTML = `
+                    <div style="margin-bottom: 14px;">引导模式适合<b>新手用户</b>，会为你保驾护航：</div>
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-lock-simple" style="color: var(--accent); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>按顺序<b>逐步解锁</b>功能，避免跳步导致错误</span>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-shield-check" style="color: var(--accent-success); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>未完成前置步骤时，<b>会提示你先去完成</b></span>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            <i class="ph ph-graduation-cap" style="color: var(--text-muted); font-size: 18px; margin-top: 2px; flex-shrink: 0;"></i>
+                            <span>适合第一次使用、不熟悉流程的用户</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            confirmBtn.onclick = () => {
+                closeModal('modalModeSwitch');
+                applyPanelMode(mode);
+            };
+
+            openModal('modalModeSwitch');
+        }
+
+        function applyPanelMode(mode) {
+            panelMode = mode;
+            localStorage.setItem('panelMode', mode);
+            // Update toggle UI
+            document.querySelectorAll('.mode-switch-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            // Refresh current page so it picks up the new mode
+            refreshCurrentPage();
+            showToast(mode === 'expert' ? '已切换到自由模式' : '已切换到引导模式', 'info');
+        }
+
+        function refreshCurrentPage() {
+            const refreshMap = {
+                slice: typeof updateSlicePage !== 'undefined' ? updateSlicePage : null,
+                asr: typeof updateAsrPage !== 'undefined' ? updateAsrPage : null,
+                annotate: typeof updateAnnotatePage !== 'undefined' ? updateAnnotatePage : null,
+                format: typeof updateFormatPage !== 'undefined' ? updateFormatPage : null,
+                train: typeof updateTrainPage !== 'undefined' ? updateTrainPage : null,
+                infer: typeof updateInferPage !== 'undefined' ? updateInferPage : null,
+                deploy: typeof updateDeployPage !== 'undefined' ? updateDeployPage : null,
+            };
+            const fn = refreshMap[currentPage];
+            if (fn) fn();
+        }
+
         // =====================================================
         //  API Helpers
         // =====================================================

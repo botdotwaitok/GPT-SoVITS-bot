@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPT-SoVITS 训练面板</title>
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' rx='48' fill='%231a1d27'/%3E%3Cpath d='M168 96a40 40 0 0 0-80 0v48a40 40 0 0 0 80 0ZM128 200a88.1 88.1 0 0 0 88-88 8 8 0 0 0-16 0 72 72 0 0 1-144 0 8 8 0 0 0-16 0 88.1 88.1 0 0 0 80 87.63V232a8 8 0 0 0 16 0v-32.37A88 88 0 0 0 128 200Z' fill='%2360a5fa'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="vendor/inter-font/inter.css">
     <link rel="stylesheet" href="vendor/phosphor-icons/regular/style.css">
     <link rel="stylesheet" href="vendor/phosphor-icons/fill/style.css">
@@ -17,7 +19,7 @@
     <div class="topbar">
         <div class="topbar-brand">
             <i class="ph ph-microphone-stage logo"></i>
-            <span>GPT-SoVITS 训练面板</span>
+            <span>GPT-SoVITS 训练面板 - 机大妈特化版</span>
         </div>
         <div class="topbar-project">
             <span style="font-size: 15px; color: var(--text-secondary);">当前项目:</span>
@@ -32,11 +34,25 @@
 
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="sidebar-section">管理</div>
+            <!-- Mode Switcher (top) -->
+            <div class="mode-switcher mode-switcher-top">
+                <div class="mode-switcher-label"><i class="ph ph-sliders-horizontal"></i> 操作模式</div>
+                <div class="mode-switch-group">
+                    <button class="mode-switch-btn active" data-mode="guided" onclick="togglePanelMode('guided')">
+                        <i class="ph ph-compass"></i> 引导
+                    </button>
+                    <button class="mode-switch-btn" data-mode="expert" onclick="togglePanelMode('expert')">
+                        <i class="ph ph-rocket-launch"></i> 自由
+                    </button>
+                </div>
+            </div>
+
             <div class="sidebar-item" data-page="guide" onclick="navigateTo('guide')">
                 <i class="ph ph-book-open sidebar-icon"></i>
                 <span>新手指南</span>
             </div>
+
+            <div class="sidebar-section">管理</div>
             <div class="sidebar-item active" data-page="projects" onclick="navigateTo('projects')">
                 <i class="ph ph-folder-simple sidebar-icon"></i>
                 <span>项目管理</span>
@@ -269,7 +285,8 @@
                                     </p>
                                     <p>同时要注意筛选音频质量，有杂音、电流声的建议删除，否则模型也会学到这些。</p>
                                     <div class="guide-tip">
-                                        <i class="ph ph-arrow-square-out" style="margin-right:4px;color:var(--accent)"></i>
+                                        <i class="ph ph-arrow-square-out"
+                                            style="margin-right:4px;color:var(--accent)"></i>
                                         <b>关于标注工具：</b>点击「打开标注工具」后，会在<b>浏览器新标签页</b>中打开一个独立的标注工具页面。
                                         这是正常行为！标注工具是一个专用的全屏界面，方便你逐条听音频、改文字。完成后关闭该标签页回到面板即可。
                                     </div>
@@ -284,13 +301,17 @@
                                         校对时可以顺便留意哪些音频适合当推理时的参考音频（3～10 秒的情绪明显的片段）。
                                         可以用<b>时长筛选</b>快速找出过短（&lt; 1s）或过长（&gt; 15s）的异常片段。
                                     </div>
-                                    <div class="guide-warn" style="border-color: #fbbf24; background: rgba(251, 191, 36, 0.06);">
+                                    <div class="guide-warn"
+                                        style="border-color: #fbbf24; background: rgba(251, 191, 36, 0.06);">
                                         <i class="ph ph-star" style="margin-right:4px;color:#fbbf24"></i>
-                                        <b style="color: #fbbf24;">恶灵低语用户必看：</b>如果后续要部署到酒馆使用，<b>必须在标注工具里标记参考音频并选择情感标签</b>（点击每条音频右侧的星标按钮 <i class="ph ph-star" style="color: #fbbf24;"></i>）。
+                                        <b
+                                            style="color: #fbbf24;">恶灵低语用户必看：</b>如果后续要部署到酒馆使用，<b>必须在标注工具里标记参考音频并选择情感标签</b>（点击每条音频右侧的星标按钮
+                                        <i class="ph ph-star" style="color: #fbbf24;"></i>）。
                                         部署时需要这些带情感标记的参考音频，请务必使用<b>预设情感</b>（如 happy、sad、whisper 等），不要自定义。
                                     </div>
                                     <div class="guide-warn">
-                                        <i class="ph ph-warning" style="margin-right:4px;color:var(--accent-warning)"></i>
+                                        <i class="ph ph-warning"
+                                            style="margin-right:4px;color:var(--accent-warning)"></i>
                                         <b>注意：</b>误删了音频不要慌，可以点工具栏的<b>「撤销」按钮</b>恢复。
                                         标注工具还支持键盘快捷键：<b>Space</b> 播放/暂停、<b>Del</b> 删除选中、<b>Ctrl+Z</b> 撤销。
                                     </div>
@@ -360,7 +381,8 @@
                                         你需要选择一个 <b>SoVITS 模型</b>和一个 <b>GPT 模型</b>来启动推理引擎，
                                         然后选择参考音频、输入文字就能试听效果了！</p>
                                     <div class="guide-warn">
-                                        <i class="ph ph-warning" style="margin-right:4px;color:var(--accent-warning)"></i>
+                                        <i class="ph ph-warning"
+                                            style="margin-right:4px;color:var(--accent-warning)"></i>
                                         <b>轮数不是越多越好！</b>过度训练（过拟合）反而会让声音走样、出现杂音。
                                         建议每个存档都试听一下，选效果最好的。GPT 模型一般 <b>10～15 轮</b>就足够了。
                                     </div>
@@ -371,9 +393,10 @@
                                         如果没有专门准备，也可以用项目切分好的音频片段来试。
                                     </div>
                                     <div class="guide-tip">
-                                        <i class="ph ph-sliders-horizontal" style="margin-right:4px;color:var(--accent)"></i>
+                                        <i class="ph ph-sliders-horizontal"
+                                            style="margin-right:4px;color:var(--accent)"></i>
                                         <b>关于高级参数：</b>新手直接用默认设置即可。效果不理想时再展开「高级参数」微调，
-                                        比如调低 Temperature 让语音更稳定，或调整语速。
+                                        比如调低 Temperature 让语音更稳定，或调整语速。但是注意，这不会影响部署到酒馆的API。
                                     </div>
                                 </div>
                             </div>
@@ -599,7 +622,8 @@
                 <!-- Page: Deploy -->
                 <div class="page" id="page-deploy">
                     <div class="page-header">
-                        <div class="page-title"><i class="ph ph-cloud-arrow-up" style="margin-right: 8px;"></i>部署到酒馆</div>
+                        <div class="page-title"><i class="ph ph-cloud-arrow-up" style="margin-right: 8px;"></i>部署到酒馆
+                        </div>
                         <div class="page-subtitle">将训练好的模型一站式部署到 SillyTavern，不再需要手动对照教程</div>
                     </div>
                     <div id="deployContent">
@@ -644,9 +668,46 @@
                 </select>
                 <div class="form-hint">不确定选哪个？推荐用 v2Pro</div>
             </div>
+            <div class="form-group">
+                <label class="form-label">项目语言</label>
+                <select class="form-select" id="newProjectLanguage">
+                    <option value="zh" selected>中文</option>
+                    <option value="en">英文</option>
+                    <option value="ja">日文</option>
+                    <option value="yue">粤语</option>
+                    <option value="ko">韩文</option>
+                </select>
+                <div class="form-hint">该语言会自动应用到 ASR、推理测试等所有模块，无需每次重新选择</div>
+            </div>
             <div class="modal-actions">
                 <button class="btn btn-ghost" onclick="closeModal('modalNewProject')">取消</button>
                 <button class="btn btn-primary" onclick="createProject()">创建项目</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Edit Project -->
+    <div class="modal-overlay" id="modalEditProject">
+        <div class="modal">
+            <div class="modal-title"><i class="ph ph-pencil-simple"
+                    style="margin-right: 6px; color: var(--accent);"></i>编辑项目
+            </div>
+            <div style="font-size: 15px; color: var(--text-secondary); margin-bottom: 16px;" id="editProjectLabel">
+            </div>
+            <div class="form-group">
+                <label class="form-label">项目语言</label>
+                <select class="form-select" id="editProjectLanguage">
+                    <option value="zh">中文</option>
+                    <option value="en">英文</option>
+                    <option value="ja">日文</option>
+                    <option value="yue">粤语</option>
+                    <option value="ko">韩文</option>
+                </select>
+                <div class="form-hint">自动应用到 ASR、推理测试等所有模块</div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modalEditProject')">取消</button>
+                <button class="btn btn-primary" onclick="saveProjectEdit()">保存</button>
             </div>
         </div>
     </div>
@@ -710,6 +771,17 @@
         </div>
     </div>
 
+    <!-- Modal: Mode Switch Confirmation -->
+    <div class="modal-overlay" id="modalModeSwitch">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-title" id="modeSwitchTitle"></div>
+            <div id="modeSwitchBody" style="font-size: 15px; line-height: 1.7; color: var(--text-secondary);"></div>
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('modalModeSwitch')">取消</button>
+                <button class="btn btn-primary" id="btnConfirmModeSwitch">确认切换</button>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript Modules -->
     <script src="js/core.js"></script>

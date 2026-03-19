@@ -23,7 +23,7 @@ from datetime import datetime
 import numpy as np
 from scipy.io import wavfile
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Body
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -80,6 +80,7 @@ def save_panel_state():
 DEFAULT_PROJECT_META = {
     "name": "",
     "version": "v2Pro",
+    "language": "zh",
     "created_at": "",
     "steps": {
         "slice":    {"status": "not_started"},
@@ -107,7 +108,11 @@ def load_project_meta(name: str) -> dict:
 
     if os.path.isfile(meta_path):
         with open(meta_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            meta = json.load(f)
+        # 向后兼容：旧项目可能没有 language 字段
+        if "language" not in meta:
+            meta["language"] = "zh"
+        return meta
 
     # 自动生成元数据
     meta = copy.deepcopy(DEFAULT_PROJECT_META)
@@ -279,6 +284,7 @@ app.add_middleware(
 class ProjectCreateRequest(BaseModel):
     name: str
     version: str = "v2Pro"
+    language: str = "zh"
 
 class ProjectSwitchRequest(BaseModel):
     name: str
@@ -339,6 +345,17 @@ class AnnotateRefTagRequest(BaseModel):
     is_ref: bool
     emotion: str = "default"
 
+class RefTagBatchUpdateItem(BaseModel):
+    id: int
+    emotion: str
+
+class RefTagBatchUpdateRequest(BaseModel):
+    updates: List[RefTagBatchUpdateItem]
+
+class ConcatRefRequest(BaseModel):
+    emotion: str
+    target_duration: float = 5.0  # 3~9 seconds
+
 
 # ============================================================
 #  项目管理 API
@@ -372,6 +389,7 @@ async def api_project_create(req: ProjectCreateRequest):
     meta = copy.deepcopy(DEFAULT_PROJECT_META)
     meta["name"] = name
     meta["version"] = req.version if req.version in SUPPORTED_VERSIONS else "v2Pro"
+    meta["language"] = req.language if req.language in ("zh", "en", "ja", "yue", "ko") else "zh"
     meta["created_at"] = datetime.now().isoformat()
     save_project_meta(name, meta)
 
@@ -404,6 +422,28 @@ async def api_project_switch(req: ProjectSwitchRequest):
     save_panel_state()
     meta = load_project_meta(name)
     return {"success": True, "project": meta}
+
+
+class ProjectUpdateRequest(BaseModel):
+    language: str = ""
+
+
+@app.post("/api/project/{name}/update")
+async def api_project_update(name: str, req: ProjectUpdateRequest):
+    """更新项目设置（语言）"""
+    proj_dir = get_project_dir(name)
+    if not os.path.isdir(proj_dir):
+        raise HTTPException(404, f"项目 '{name}' 不存在")
+
+    allowed = ("zh", "en", "ja", "yue", "ko")
+    if req.language not in allowed:
+        raise HTTPException(400, f"不支持的语言: {req.language}")
+
+    meta = load_project_meta(name)
+    meta["language"] = req.language
+    save_project_meta(name, meta)
+
+    return {"success": True, "language": req.language}
 
 
 @app.delete("/api/project/{name}")
@@ -772,6 +812,591 @@ async def api_annotate_ref_tags():
     if not project:
         return {"tags": {}}
     return {"tags": _load_ref_tags()}
+
+
+@app.post("/api/annotate/ref_tag/batch_update")
+async def api_annotate_ref_tag_batch_update(req: RefTagBatchUpdateRequest):
+    """批量更新参考音频的情感标签"""
+    project = panel_state.get("active_project", "")
+    if not project:
+        raise HTTPException(400, "未选择活跃项目")
+
+    tags = _load_ref_tags()
+    updated = []
+    for item in req.updates:
+        key = str(item.id)
+        if key in tags:
+            tags[key]["emotion"] = item.emotion.strip() or "default"
+            updated.append(item.id)
+    _save_ref_tags(tags)
+    return {"success": True, "updated": updated}
+
+
+@app.delete("/api/annotate/ref_tag/{entry_id}")
+async def api_annotate_ref_tag_delete(entry_id: int):
+    """从 ref_tags.json 中删除一条参考音频标记"""
+    project = panel_state.get("active_project", "")
+    if not project:
+        raise HTTPException(400, "未选择活跃项目")
+
+    tags = _load_ref_tags()
+    key = str(entry_id)
+    if key not in tags:
+        raise HTTPException(404, f"参考音频标记 {entry_id} 不存在")
+
+    del tags[key]
+    _save_ref_tags(tags)
+    return {"success": True, "deleted_id": entry_id}
+
+
+@app.post("/api/annotate/extract_ref")
+async def api_annotate_extract_ref(req: dict = Body(...)):
+    """提取已标记的参考音频到 ref_audio/ 目录，可选从训练集移除"""
+    project = panel_state.get("active_project", "")
+    if not project:
+        raise HTTPException(400, "未选择活跃项目")
+
+    tags = _load_ref_tags()
+    if not tags:
+        raise HTTPException(400, "没有已标记的参考音频")
+
+    remove_from_training = req.get("remove_from_training", False)
+    os.makedirs(REF_AUDIO_DIR, exist_ok=True)
+
+    extracted = []      # 成功提取的条目
+    ids_to_remove = []  # 需从训练集移除的 entry id
+    errors = []
+
+    for entry_key, info in tags.items():
+        wav_path = info.get("wav_path", "")
+        text = info.get("text", "")
+        emotion = info.get("emotion", "default")
+
+        if not wav_path or not os.path.isfile(wav_path):
+            errors.append(f"文件不存在: {wav_path}")
+            continue
+
+        # 生成目标文件名: {emotion}_{序号}.wav
+        safe_emotion = "".join(c for c in emotion if c.isalnum() or c in "_-") or "default"
+        counter = 1
+        out_name = f"{safe_emotion}_{counter}.wav"
+        out_path = os.path.join(REF_AUDIO_DIR, out_name)
+        while os.path.isfile(out_path):
+            counter += 1
+            out_name = f"{safe_emotion}_{counter}.wav"
+            out_path = os.path.join(REF_AUDIO_DIR, out_name)
+
+        try:
+            import shutil
+            shutil.copy2(wav_path, out_path)
+
+            # 写入对应 .txt 文件
+            txt_path = os.path.splitext(out_path)[0] + ".txt"
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(text)
+
+            extracted.append({
+                "emotion": emotion,
+                "filename": out_name,
+                "text": text[:50],
+            })
+
+            # 记录需移除的 entry id
+            if remove_from_training:
+                try:
+                    ids_to_remove.append(int(entry_key))
+                except ValueError:
+                    pass
+
+        except Exception as e:
+            errors.append(f"提取失败 ({emotion}): {str(e)}")
+
+    # 从训练集移除
+    removed_count = 0
+    if remove_from_training and ids_to_remove:
+        push_undo()
+        ids_set = set(ids_to_remove)
+        before = len(annotate_state["entries"])
+        annotate_state["entries"] = [
+            e for e in annotate_state["entries"] if e["id"] not in ids_set
+        ]
+        removed_count = before - len(annotate_state["entries"])
+        # 重新编号
+        for i, entry in enumerate(annotate_state["entries"]):
+            entry["id"] = i
+        save_list_file(annotate_state["list_file"], annotate_state["entries"])
+
+    return {
+        "success": True,
+        "extracted": len(extracted),
+        "removed_from_training": removed_count,
+        "details": extracted,
+        "errors": errors,
+    }
+
+
+# ============================================================
+#  音频质检分析 — Phase A
+# ============================================================
+
+analyze_task = {
+    "status": "idle",       # idle / running / done / error
+    "progress": 0,          # 0-100
+    "total": 0,
+    "processed": 0,
+    "results": {},          # id_str -> [list of issue tags]
+    "summary": {},          # tag -> count
+    "error": "",
+}
+
+
+def _analyze_audio_file(wav_path: str, global_stats: dict = None) -> list:
+    """
+    分析单个音频文件的信号质量，返回问题标签列表。
+    使用 numpy + scipy（已导入），不引入新依赖。
+
+    global_stats: 包含全局统计信息（rms_mean, rms_median, rms_q1, rms_q3, rms_iqr）
+                  用于相对阈值判定。
+    """
+    issues = []
+    try:
+        sr, data = wavfile.read(wav_path)
+    except Exception:
+        return ["read_error"]
+
+    # 转为 float64 归一化到 [-1, 1]
+    if data.dtype == np.int16:
+        samples = data.astype(np.float64) / 32768.0
+    elif data.dtype == np.int32:
+        samples = data.astype(np.float64) / 2147483648.0
+    elif data.dtype == np.float32 or data.dtype == np.float64:
+        samples = data.astype(np.float64)
+    else:
+        samples = data.astype(np.float64)
+        max_val = np.max(np.abs(samples))
+        if max_val > 0:
+            samples = samples / max_val
+
+    # 单声道
+    if samples.ndim > 1:
+        samples = np.mean(samples, axis=1)
+
+    if len(samples) == 0:
+        return ["empty"]
+
+    abs_samples = np.abs(samples)
+    peak = np.max(abs_samples)
+    rms = np.sqrt(np.mean(samples ** 2))
+
+    # --- 1. 削波/爆音 (clipping) ---
+    # 方案：采样值 > 0.98 的占比 > 0.1% 即标记
+    # 正常录音即使音量较大，也很少持续超过 0.98
+    clip_ratio = np.sum(abs_samples > 0.98) / len(samples)
+    if clip_ratio > 0.001:
+        issues.append("clipping")
+
+    # --- 2. 绝对音量判定 ---
+    # RMS 转 dBFS：dBFS = 20 * log10(rms)
+    # 绝对过大：RMS > -10 dBFS（约 0.316）→ 录音整体过响
+    # 绝对过低：RMS < -40 dBFS（约 0.01）→ 几乎静音
+    if rms > 0:
+        dbfs = 20 * np.log10(rms)
+        if dbfs > -10:
+            issues.append("loud")
+        elif dbfs < -40:
+            issues.append("silent")
+
+    # --- 3. 相对音量判定（基于全局统计 IQR 离群检测）---
+    # 只在绝对判定未触发时使用。使用 IQR 方法：
+    # loud: RMS > Q3 + 1.5 * IQR 或 > 全局均值 * 2.0
+    # silent: RMS < Q1 - 1.5 * IQR 或 < 全局均值 * 0.25
+    if global_stats and "loud" not in issues and "silent" not in issues:
+        gs = global_stats
+        if gs.get("rms_iqr", 0) > 0:
+            upper_fence = gs["rms_q3"] + 1.5 * gs["rms_iqr"]
+            lower_fence = gs["rms_q1"] - 1.5 * gs["rms_iqr"]
+            if rms > upper_fence:
+                issues.append("loud")
+            elif rms < max(lower_fence, 0.001):
+                issues.append("silent")
+        # 后备：简单倍数法
+        if gs.get("rms_mean", 0) > 0 and "loud" not in issues and "silent" not in issues:
+            if rms > gs["rms_mean"] * 2.0:
+                issues.append("loud")
+            elif rms < gs["rms_mean"] * 0.25:
+                issues.append("silent")
+
+    # --- 4. 峰值尖刺 (spike) ---
+    # Crest factor = peak / rms，正常语音约 3-10
+    # > 15 表示有突发的巨大尖刺（如敲击、口水音等）
+    if rms > 0.001:
+        crest_factor = peak / rms
+        if crest_factor > 15:
+            issues.append("spike")
+
+    # --- 5. DC 偏移 (dc_offset) ---
+    # 正常录音的 DC 偏移接近 0。> 5% 表示麦克风或声卡有问题
+    dc_offset = abs(np.mean(samples))
+    if dc_offset > 0.05:
+        issues.append("dc_offset")
+
+    # --- 6. 频谱分析（muffled 检测）---
+    from scipy.fft import rfft, rfftfreq
+    n = len(samples)
+    fft_mag = np.abs(rfft(samples))
+    freqs = rfftfreq(n, d=1.0 / sr)
+
+    # 闷声判定需要同时满足两个条件：
+    #  ① 高频能量占比极低（4kHz+ < 1%）
+    #  ② 频谱重心（spectral centroid）低于 500Hz
+    # 正常语音高频占比通常 2-8%，重心通常 800-2000Hz。
+    # 只有真正缺乏高频的录音（如隔墙录音、被子捂着）才会同时满足。
+    high_mask = freqs >= 4000
+    total_energy = np.sum(fft_mag ** 2)
+    if total_energy > 0:
+        high_energy_ratio = np.sum(fft_mag[high_mask] ** 2) / total_energy
+        spectral_centroid = np.sum(freqs * fft_mag ** 2) / total_energy
+        if high_energy_ratio < 0.01 and spectral_centroid < 500:
+            issues.append("muffled")
+
+    # --- 7. 简易 SNR（语音段 vs 静音段）---
+    # 分帧计算能量
+    frame_len = int(sr * 0.025)  # 25ms 帧
+    hop = int(sr * 0.010)        # 10ms 步长
+    if frame_len > 0 and len(samples) > frame_len:
+        num_frames = (len(samples) - frame_len) // hop + 1
+        frame_energies = np.array([
+            np.mean(samples[i * hop: i * hop + frame_len] ** 2)
+            for i in range(num_frames)
+        ])
+        if len(frame_energies) > 0:
+            energy_threshold = np.mean(frame_energies) * 0.1
+            speech_frames = frame_energies[frame_energies > energy_threshold]
+            silence_frames = frame_energies[frame_energies <= energy_threshold]
+
+            if len(silence_frames) > 0 and len(speech_frames) > 0:
+                mean_speech = np.mean(speech_frames)
+                mean_silence = np.mean(silence_frames)
+                if mean_silence > 0:
+                    snr = 10 * np.log10(mean_speech / mean_silence)
+                    if snr < 10:
+                        issues.append("noisy")
+
+    return issues
+
+
+def _run_analysis_task():
+    """后台线程：分析所有 annotate 条目"""
+    entries = list(annotate_state["entries"])  # snapshot
+    analyze_task["total"] = len(entries)
+    analyze_task["processed"] = 0
+    analyze_task["results"] = {}
+    analyze_task["summary"] = {}
+    analyze_task["error"] = ""
+
+    if not entries:
+        analyze_task["status"] = "done"
+        analyze_task["progress"] = 100
+        return
+
+    # 第一遍：收集所有 RMS 值用于相对阈值
+    rms_values = []
+    for entry in entries:
+        try:
+            sr, data = wavfile.read(entry["wav_path"])
+            if data.dtype == np.int16:
+                s = data.astype(np.float64) / 32768.0
+            elif data.dtype == np.int32:
+                s = data.astype(np.float64) / 2147483648.0
+            else:
+                s = data.astype(np.float64)
+                mx = np.max(np.abs(s))
+                if mx > 0:
+                    s = s / mx
+            if s.ndim > 1:
+                s = np.mean(s, axis=1)
+            rms_values.append(np.sqrt(np.mean(s ** 2)))
+        except Exception:
+            rms_values.append(0.0)
+
+    # 计算全局统计量（均值 + IQR）
+    rms_arr = np.array(rms_values)
+    valid_rms = rms_arr[rms_arr > 0]
+    global_stats = {}
+    if len(valid_rms) > 0:
+        global_stats = {
+            "rms_mean": float(np.mean(valid_rms)),
+            "rms_median": float(np.median(valid_rms)),
+            "rms_q1": float(np.percentile(valid_rms, 25)),
+            "rms_q3": float(np.percentile(valid_rms, 75)),
+        }
+        global_stats["rms_iqr"] = global_stats["rms_q3"] - global_stats["rms_q1"]
+
+    # 第二遍：逐个分析
+    all_results = {}
+    tag_counts = {}
+    for idx, entry in enumerate(entries):
+        if analyze_task["status"] != "running":
+            return  # cancelled
+        try:
+            issues = _analyze_audio_file(entry["wav_path"], global_stats)
+
+            if issues:
+                all_results[str(entry["id"])] = issues
+                for tag in issues:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+        except Exception:
+            all_results[str(entry["id"])] = ["analyze_error"]
+            tag_counts["analyze_error"] = tag_counts.get("analyze_error", 0) + 1
+
+        analyze_task["processed"] = idx + 1
+        analyze_task["progress"] = int((idx + 1) / len(entries) * 100)
+
+    analyze_task["results"] = all_results
+    analyze_task["summary"] = tag_counts
+    analyze_task["status"] = "done"
+    analyze_task["progress"] = 100
+
+    # 保存到项目目录
+    project = panel_state.get("active_project", "")
+    if project:
+        analysis_path = os.path.join(LOGS_DIR, project, "audio_analysis.json")
+        try:
+            with open(analysis_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "results": all_results,
+                    "summary": tag_counts,
+                    "total_analyzed": len(entries),
+                }, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+
+@app.post("/api/annotate/analyze")
+async def api_annotate_analyze():
+    """启动后台音频质检分析"""
+    if analyze_task["status"] == "running":
+        raise HTTPException(409, "分析任务正在运行中")
+
+    if not annotate_state["entries"]:
+        raise HTTPException(400, "没有已加载的标注条目可供分析")
+
+    analyze_task["status"] = "running"
+    analyze_task["progress"] = 0
+    t = threading.Thread(target=_run_analysis_task, daemon=True)
+    t.start()
+    return {"success": True, "total": len(annotate_state["entries"])}
+
+
+@app.get("/api/annotate/analyze/status")
+async def api_annotate_analyze_status():
+    """轮询质检分析进度和结果"""
+    return {
+        "status": analyze_task["status"],
+        "progress": analyze_task["progress"],
+        "total": analyze_task["total"],
+        "processed": analyze_task["processed"],
+        "results": analyze_task["results"] if analyze_task["status"] == "done" else {},
+        "summary": analyze_task["summary"] if analyze_task["status"] == "done" else {},
+        "error": analyze_task["error"],
+    }
+
+
+# ============================================================
+#  短音频拼接器 — Phase C
+# ============================================================
+
+@app.get("/api/annotate/ref_concat_preview")
+async def api_annotate_ref_concat_preview():
+    """按情感标签分组，返回可拼接的短音频列表及预估时长"""
+    project = panel_state.get("active_project", "")
+    if not project:
+        raise HTTPException(400, "未选择活跃项目")
+
+    tags = _load_ref_tags()
+    if not tags:
+        return {"groups": {}}
+
+    groups = {}  # emotion -> { clips: [...], total_duration, count }
+    for entry_key, info in tags.items():
+        emotion = info.get("emotion", "default")
+        duration = info.get("duration", 0)
+        wav_path = info.get("wav_path", "")
+        text = info.get("text", "")
+
+        # 跳过时长 >= 9s 的条目（已经足够长了）
+        if duration >= 9:
+            continue
+        # 跳过不存在的文件
+        if not os.path.isfile(wav_path):
+            continue
+
+        if emotion not in groups:
+            groups[emotion] = {"clips": [], "total_duration": 0, "count": 0}
+
+        groups[emotion]["clips"].append({
+            "id": int(entry_key),
+            "wav_path": wav_path,
+            "text": text,
+            "duration": duration,
+        })
+        groups[emotion]["total_duration"] = round(
+            groups[emotion]["total_duration"] + duration, 2
+        )
+        groups[emotion]["count"] += 1
+
+    # 按时长从长到短排序每组的 clips
+    for emotion in groups:
+        groups[emotion]["clips"].sort(key=lambda c: c["duration"], reverse=True)
+
+    return {"groups": groups}
+
+
+@app.post("/api/annotate/concat_ref")
+async def api_annotate_concat_ref(req: ConcatRefRequest):
+    """将同情感标签的短音频拼接为参考音频"""
+    project = panel_state.get("active_project", "")
+    if not project:
+        raise HTTPException(400, "未选择活跃项目")
+
+    emotion = req.emotion.strip()
+    if not emotion:
+        raise HTTPException(400, "情感标签不能为空")
+
+    target = max(3.0, min(9.0, req.target_duration))
+
+    # 收集同情感的短音频
+    tags = _load_ref_tags()
+    candidates = []
+    for entry_key, info in tags.items():
+        if info.get("emotion", "default") != emotion:
+            continue
+        dur = info.get("duration", 0)
+        wav = info.get("wav_path", "")
+        if dur <= 0 or dur >= 9 or not os.path.isfile(wav):
+            continue
+        candidates.append({
+            "id": int(entry_key),
+            "wav_path": wav,
+            "text": info.get("text", ""),
+            "duration": dur,
+        })
+
+    if not candidates:
+        raise HTTPException(404, f"没有找到情感 '{emotion}' 的可拼接短音频")
+
+    # 按时长从长到短排序
+    candidates.sort(key=lambda c: c["duration"], reverse=True)
+
+    # 贪心选择：凑到目标时长（±0.5s 容差）
+    SILENCE_DURATION = 0.2  # 200ms 静音
+    selected = []
+    accumulated = 0.0
+
+    for clip in candidates:
+        if accumulated >= target - 0.5:
+            break
+        gap = SILENCE_DURATION if selected else 0
+        accumulated += clip["duration"] + gap
+        selected.append(clip)
+
+    if not selected:
+        raise HTTPException(400, "无法凑出足够时长的拼接音频")
+
+    # 单条音频重复补足目标时长
+    if len(selected) == 1 and accumulated < target - 0.5:
+        single = selected[0]
+        while accumulated < target - 0.5:
+            gap = SILENCE_DURATION
+            accumulated += single["duration"] + gap
+            selected.append(single)  # 重复同一条
+
+    # 读取音频并拼接
+    try:
+        segments = []
+        target_sr = None
+        texts = []
+
+        for i, clip in enumerate(selected):
+            sr, data = wavfile.read(clip["wav_path"])
+            if target_sr is None:
+                target_sr = sr
+
+            # 转为 float64
+            if data.dtype == np.int16:
+                samples = data.astype(np.float64) / 32768.0
+            elif data.dtype == np.int32:
+                samples = data.astype(np.float64) / 2147483648.0
+            elif data.dtype == np.float32 or data.dtype == np.float64:
+                samples = data.astype(np.float64)
+            else:
+                samples = data.astype(np.float64)
+                mx = np.max(np.abs(samples))
+                if mx > 0:
+                    samples = samples / mx
+
+            # 单声道
+            if samples.ndim > 1:
+                samples = np.mean(samples, axis=1)
+
+            # 重采样到第一个文件的采样率（简易方式）
+            if sr != target_sr and target_sr > 0:
+                ratio = target_sr / sr
+                new_len = int(len(samples) * ratio)
+                indices = np.linspace(0, len(samples) - 1, new_len)
+                samples = np.interp(indices, np.arange(len(samples)), samples)
+
+            # 插入静音间隔
+            if i > 0:
+                silence = np.zeros(int(target_sr * SILENCE_DURATION))
+                segments.append(silence)
+
+            segments.append(samples)
+            texts.append(clip["text"])
+
+        # 拼接
+        concat_audio = np.concatenate(segments)
+        final_duration = round(len(concat_audio) / target_sr, 2)
+
+        # 归一化到 int16 范围
+        peak = np.max(np.abs(concat_audio))
+        if peak > 0:
+            concat_audio = concat_audio / peak * 0.9
+        concat_int16 = (concat_audio * 32767).astype(np.int16)
+
+        # 写入 ref_audio/ 目录
+        os.makedirs(REF_AUDIO_DIR, exist_ok=True)
+        safe_emotion = "".join(c for c in emotion if c.isalnum() or c in "_-")
+        out_name = f"{safe_emotion}_concat.wav"
+        out_path = os.path.join(REF_AUDIO_DIR, out_name)
+
+        # 如果同名存在，加序号
+        if os.path.isfile(out_path):
+            counter = 1
+            while os.path.isfile(out_path):
+                out_name = f"{safe_emotion}_concat_{counter}.wav"
+                out_path = os.path.join(REF_AUDIO_DIR, out_name)
+                counter += 1
+
+        wavfile.write(out_path, target_sr, concat_int16)
+
+        # 写入对应 .txt 文件
+        txt_path = os.path.splitext(out_path)[0] + ".txt"
+        combined_text = "，".join(texts)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(combined_text)
+
+        return {
+            "success": True,
+            "path": out_path,
+            "filename": out_name,
+            "duration": final_duration,
+            "clips_used": len(selected),
+            "text": combined_text,
+        }
+
+    except Exception as e:
+        raise HTTPException(500, f"拼接失败: {str(e)}")
 
 
 # ============================================================
@@ -2934,6 +3559,33 @@ async def api_infer_ref_audio_upload(file: UploadFile = File(...)):
         "path": dst_path,
         "size_kb": round(os.path.getsize(dst_path) / 1024, 1),
     }
+
+
+@app.delete("/api/infer/ref_audio")
+async def api_infer_ref_audio_delete(path: str):
+    """删除 ref_audio/ 目录中的指定参考音频文件"""
+    if not path:
+        raise HTTPException(400, "路径不能为空")
+
+    # 安全检查：确认文件在 REF_AUDIO_DIR 内
+    real_path = os.path.realpath(path)
+    real_ref_dir = os.path.realpath(REF_AUDIO_DIR)
+    if not real_path.startswith(real_ref_dir):
+        raise HTTPException(403, "只能删除 ref_audio/ 目录内的文件")
+
+    if not os.path.isfile(real_path):
+        raise HTTPException(404, f"文件不存在: {path}")
+
+    filename = os.path.basename(real_path)
+    os.remove(real_path)
+
+    # 同时删除同名 .txt 文件
+    name_no_ext = os.path.splitext(filename)[0]
+    txt_path = os.path.join(REF_AUDIO_DIR, f"{name_no_ext}.txt")
+    if os.path.isfile(txt_path):
+        os.remove(txt_path)
+
+    return {"success": True, "deleted": filename}
 
 
 # ============================================================
