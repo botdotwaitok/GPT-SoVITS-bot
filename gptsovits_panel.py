@@ -1367,14 +1367,14 @@ async def api_annotate_concat_ref(req: ConcatRefRequest):
         # 写入 ref_audio/ 目录
         os.makedirs(REF_AUDIO_DIR, exist_ok=True)
         safe_emotion = "".join(c for c in emotion if c.isalnum() or c in "_-")
-        out_name = f"{safe_emotion}_concat.wav"
+        out_name = f"{safe_emotion}.wav"
         out_path = os.path.join(REF_AUDIO_DIR, out_name)
 
         # 如果同名存在，加序号
         if os.path.isfile(out_path):
             counter = 1
             while os.path.isfile(out_path):
-                out_name = f"{safe_emotion}_concat_{counter}.wav"
+                out_name = f"{safe_emotion}_{counter}.wav"
                 out_path = os.path.join(REF_AUDIO_DIR, out_name)
                 counter += 1
 
@@ -3026,6 +3026,113 @@ async def api_train_models():
     return {"sovits": sovits_models, "gpt": gpt_models, "version": version}
 
 
+@app.post("/api/train/retrain")
+async def api_train_retrain():
+    """重新训练：删除旧模型/checkpoint/格式化产物，保留 .list 标注文件，重置项目状态"""
+    project = panel_state.get("active_project")
+    if not project:
+        raise HTTPException(400, "请先选择一个项目")
+
+    if train_task["status"] == "running":
+        raise HTTPException(409, "训练任务正在运行中，请先停止训练")
+
+    proj_dir = get_project_dir(project)
+    if not os.path.isdir(proj_dir):
+        raise HTTPException(404, f"项目 '{project}' 不存在")
+
+    meta = load_project_meta(project)
+    version = meta.get("version", "v2Pro")
+
+    deleted_files = []
+    freed_bytes = 0
+
+    # 1. 删除 SoVITS 权重文件
+    sovits_dir = os.path.join(BASE_DIR, SOVITS_WEIGHT_DIR_MAP.get(version, "SoVITS_weights_v2Pro"))
+    if os.path.isdir(sovits_dir):
+        for fname in os.listdir(sovits_dir):
+            # 精确匹配项目名：文件名以 "{project}_" 或 "{project}-" 开头
+            if fname.endswith(".pth") and (fname.startswith(f"{project}_") or fname.startswith(f"{project}-")):
+                fpath = os.path.join(sovits_dir, fname)
+                freed_bytes += os.path.getsize(fpath)
+                os.remove(fpath)
+                deleted_files.append(f"SoVITS: {fname}")
+
+    # 2. 删除 GPT 权重文件
+    gpt_dir = os.path.join(BASE_DIR, GPT_WEIGHT_DIR_MAP.get(version, "GPT_weights_v2Pro"))
+    if os.path.isdir(gpt_dir):
+        for fname in os.listdir(gpt_dir):
+            if fname.endswith(".ckpt") and (fname.startswith(f"{project}_") or fname.startswith(f"{project}-")):
+                fpath = os.path.join(gpt_dir, fname)
+                freed_bytes += os.path.getsize(fpath)
+                os.remove(fpath)
+                deleted_files.append(f"GPT: {fname}")
+
+    # 3. 清理训练 checkpoint 目录 (logs_s1_*, logs_s2_*)，包括子目录 ckpt/ 等
+    for entry in os.listdir(proj_dir):
+        if entry.startswith("logs_s1") or entry.startswith("logs_s2"):
+            ckpt_dir = os.path.join(proj_dir, entry)
+            if os.path.isdir(ckpt_dir):
+                dir_size = sum(
+                    os.path.getsize(os.path.join(dp, f))
+                    for dp, _, fns in os.walk(ckpt_dir) for f in fns
+                )
+                freed_bytes += dir_size
+                shutil.rmtree(ckpt_dir)
+                deleted_files.append(f"checkpoint: {entry}/")
+
+    # 4. 删除 tfevents 文件
+    for entry in os.listdir(proj_dir):
+        if entry.startswith("events.out.tfevents"):
+            fpath = os.path.join(proj_dir, entry)
+            freed_bytes += os.path.getsize(fpath)
+            os.remove(fpath)
+            deleted_files.append(f"tfevents: {entry}")
+
+    # 5. 清理格式化产物（保留 .list、ref_tags.json、raw_upload、project.json、config.json、audio_analysis.json、eval）
+    format_artifacts = ["2-name2text.txt", "6-name2semantic.tsv"]
+    for fname in format_artifacts:
+        fpath = os.path.join(proj_dir, fname)
+        if os.path.isfile(fpath):
+            freed_bytes += os.path.getsize(fpath)
+            os.remove(fpath)
+            deleted_files.append(f"format: {fname}")
+
+    format_dirs = ["3-bert", "4-cnhubert", "5-wav32k", "7-sv_cn"]
+    for dname in format_dirs:
+        dpath = os.path.join(proj_dir, dname)
+        if os.path.isdir(dpath):
+            dir_size = sum(
+                os.path.getsize(os.path.join(dp, f))
+                for dp, _, fns in os.walk(dpath) for f in fns
+            )
+            freed_bytes += dir_size
+            shutil.rmtree(dpath)
+            deleted_files.append(f"format: {dname}/")
+
+    # 6. 删除 train.log
+    train_log_path = os.path.join(proj_dir, "train.log")
+    if os.path.isfile(train_log_path):
+        freed_bytes += os.path.getsize(train_log_path)
+        os.remove(train_log_path)
+        deleted_files.append("train.log")
+
+    # 7. 重置项目状态
+    meta["steps"]["format"]["status"] = "not_started"
+    meta["steps"]["train"]["status"] = "not_started"
+    meta["steps"]["infer"]["status"] = "not_started"
+    save_project_meta(project, meta)
+
+    freed_mb = round(freed_bytes / 1024 / 1024, 1)
+
+    return {
+        "success": True,
+        "deleted_files": deleted_files,
+        "deleted_count": len(deleted_files),
+        "freed_mb": freed_mb,
+        "message": f"已清理 {len(deleted_files)} 个文件/目录，释放 {freed_mb} MB 空间",
+    }
+
+
 # ============================================================
 #  推理测试 — 状态 & 工具函数
 # ============================================================
@@ -4267,16 +4374,52 @@ async def api_deploy_model_patch_api():
 
 @app.get("/api/deploy/ref/list")
 async def api_deploy_ref_list():
-    """返回已在标注工具中标记的参考音频列表（从 ref_tags.json 读取）"""
+    """返回参考音频列表（两个来源：ref_audio/ 目录 + ref_tags.json 标注标记）"""
     project = panel_state.get("active_project", "")
     if not project:
-        return {"audios": [], "error": "未选择活跃项目"}
+        return {"ref_dir_audios": [], "tagged_audios": [], "error": "未选择活跃项目"}
 
+    # ---- 来源 1: ref_audio/ 目录（推理测试页面准备的参考音频） ----
+    ref_dir_audios = []
+    ref_audio_dir = os.path.join(BASE_DIR, "ref_audio")
+    if os.path.isdir(ref_audio_dir):
+        audio_exts = {".wav", ".mp3", ".ogg", ".flac"}
+        for fname in sorted(os.listdir(ref_audio_dir)):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in audio_exts:
+                continue
+            fpath = os.path.join(ref_audio_dir, fname)
+            name_no_ext = os.path.splitext(fname)[0]
+            # 读取同名 .txt 获取文本
+            txt_path = os.path.join(ref_audio_dir, f"{name_no_ext}.txt")
+            prompt_text = ""
+            if os.path.isfile(txt_path):
+                try:
+                    with open(txt_path, "r", encoding="utf-8") as f:
+                        prompt_text = f.read().strip()
+                except Exception:
+                    pass
+            # 获取时长
+            duration_s = 0
+            try:
+                sr, data = wavfile.read(fpath)
+                duration_s = round(len(data) / sr, 1)
+            except Exception:
+                pass
+            size_kb = round(os.path.getsize(fpath) / 1024, 1)
+            ref_dir_audios.append({
+                "filename": fname,
+                "path": fpath,
+                "emotion": name_no_ext,
+                "text": prompt_text,
+                "duration_s": duration_s,
+                "size_kb": size_kb,
+                "source": "ref_audio",
+            })
+
+    # ---- 来源 2: ref_tags.json（标注工具标记的参考音频） ----
+    tagged_audios = []
     tags = _load_ref_tags()
-    if not tags:
-        return {"audios": [], "project": project}
-
-    audios = []
     for entry_id, info in tags.items():
         wav_path = info.get("wav_path", "")
         if not os.path.isfile(wav_path):
@@ -4291,7 +4434,7 @@ async def api_deploy_ref_list():
             except Exception:
                 pass
 
-        audios.append({
+        tagged_audios.append({
             "id": int(entry_id),
             "filename": os.path.basename(wav_path),
             "path": wav_path,
@@ -4300,20 +4443,26 @@ async def api_deploy_ref_list():
             "emotion": info.get("emotion", "default"),
             "duration_s": duration_s,
             "size_kb": size_kb,
+            "source": "ref_tags",
         })
 
-    return {"audios": audios, "project": project}
+    return {"ref_dir_audios": ref_dir_audios, "tagged_audios": tagged_audios, "project": project}
 
 
 @app.get("/api/deploy/ref/audio")
 async def api_deploy_ref_audio(path: str):
-    """流式返回音频文件（预览播放用），仅允许 slicer_opt 目录"""
+    """流式返回音频文件（预览播放用），允许 slicer_opt 和 ref_audio 目录"""
     slicer_root = os.path.join(BASE_DIR, "output", "slicer_opt")
-    # 安全检查：规范化路径并确保在 slicer_opt 目录内
+    ref_audio_root = os.path.join(BASE_DIR, "ref_audio")
+    # 安全检查：规范化路径并确保在允许的目录内
     real_path = os.path.realpath(path)
-    real_root = os.path.realpath(slicer_root)
-    if not real_path.startswith(real_root):
-        raise HTTPException(status_code=403, detail="只能访问切分输出目录下的音频文件")
+    allowed = False
+    for allowed_root in [slicer_root, ref_audio_root]:
+        if real_path.startswith(os.path.realpath(allowed_root)):
+            allowed = True
+            break
+    if not allowed:
+        raise HTTPException(status_code=403, detail="只能访问 slicer_opt 或 ref_audio 目录下的音频文件")
     if not os.path.isfile(real_path):
         raise HTTPException(status_code=404, detail="文件不存在")
     # 转换为浏览器可播放的 16-bit PCM WAV
