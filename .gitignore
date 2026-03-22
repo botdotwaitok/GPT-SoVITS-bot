@@ -147,6 +147,9 @@ cython_debug/
 # Local panel state (per-user config)
 panel_state.json
 
+# User-specific TTS inference config (contains local model paths)
+GPT_SoVITS/configs/tts_infer.yaml
+
 # User reference audio (not part of codebase)
 ref_audio/
 

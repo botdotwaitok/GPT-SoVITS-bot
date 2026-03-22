@@ -63,10 +63,10 @@ GPT-SoVITS-v2pro/
 ```
 
 2. 放入你的**参考音频**，命名格式：`角色名.wav`
-   - 比如你的角色叫 Bear，那就叫 `Bear.wav`
-   - ⚠️ **必须是 `.wav` 格式**！如果你的音频是 [.mp3](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/Bear.mp3)，需要先转换成 `.wav`
+   - 比如你的角色叫 MyVoice，那就叫 `MyVoice.wav`
+   - ⚠️ **必须是 `.wav` 格式**！如果你的音频是 [.mp3](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/MyVoice.mp3)，需要先转换成 `.wav`
 
-3. 在同目录创建一个**同名的 [.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/Bear.txt) 文件**（比如 [Bear.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/Bear.txt)），里面写上这段参考音频里**说的话**
+3. 在同目录创建一个**同名的 [.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/MyVoice.txt) 文件**（比如 [MyVoice.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/MyVoice.txt)），里面写上这段参考音频里**说的话**
    - 这一步很重要，能显著提升语音质量！
 
 > [!IMPORTANT]
@@ -108,9 +108,9 @@ from typing import Any, Generator, Union
 #
 # 使用方法:
 #   1. 在 ref_audio/ 目录下放入参考音频，命名为 <voice_id>.wav
-#      例如: ref_audio/Bear.wav
+#      例如: ref_audio/MyVoice.wav
 #   2. 同目录创建同名 .txt 文件写入参考音频的文字内容
-#      例如: ref_audio/Bear.txt (内容为音频里说的话)
+#      例如: ref_audio/MyVoice.txt (内容为音频里说的话)
 #   3. SillyTavern Provider Endpoint 填 http://127.0.0.1:9881
 # ============================================================
 
@@ -167,18 +167,18 @@ async def st_tts_endpoint(request: ST_TTS_Request):
     raw_ref = req.get("ref_audio_path") or ""
     voice_name = req.get("target_voice", "") or ""
 
-    # SillyTavern 可能传一个构造出来的路径(如 ./参考音频/Bear.wav)
+    # SillyTavern 可能传一个构造出来的路径(如 ./参考音频/MyVoice.wav)
     # 我们从中提取出不带后缀的文件名作为 voice_name
     if raw_ref:
         basename = os.path.splitext(os.path.basename(raw_ref))[0]
-        # 处理类似 Bear.wav.mp3 的双后缀情况
+        # 处理类似 MyVoice.wav.mp3 的双后缀情况
         if "." in basename:
             basename = basename.rsplit(".", 1)[0]
         if basename:
             voice_name = basename
 
     if not voice_name:
-        voice_name = "Bear"  # 默认 fallback，改成你自己的角色名
+        voice_name = "MyVoice"  # 默认 fallback，改成你自己的角色名
 
     # 用 voice_name 去 ref_audio/ 目录查找实际文件
     audio_path, prompt_text = _find_ref_audio(voice_name)
@@ -218,15 +218,15 @@ async def speakers_list_endpoint():
 async def speakers_endpoint():
     return JSONResponse(status_code=200, content=[
         {
-            "name": "Bear",       # ← 改成你的角色名
-            "voice_id": "Bear"    # ← 和上面保持一致
+            "name": "MyVoice",       # ← 改成你的角色名
+            "voice_id": "MyVoice"    # ← 和上面保持一致
         }
     ])
 ```
 
 > [!NOTE]
 > **关于 `/speakers` 端点里的角色名：**
-> 把 `"Bear"` 改成你自己的角色名。这个名字要和你 [ref_audio/](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/api_v2.py#567-580) 文件夹里的文件名一致！
+> 把 `"MyVoice"` 改成你自己的角色名。这个名字要和你 [ref_audio/](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/api_v2.py#567-580) 文件夹里的文件名一致！
 > 比如你的参考音频叫 `Miku.wav`，那这里就填 `"Miku"`。
 >
 > 如果你有**多个角色**，可以这样写：
@@ -306,10 +306,10 @@ INFO:     Uvicorn running on http://127.0.0.1:9881 (Press CTRL+C to quit)
 **A:** 这个错误可以忽略，不影响功能。它只是 SillyTavern 在检查一个不存在的第三方扩展。
 
 ### Q: 声音质量不好 / 有杂音
-**A:** 换一段更干净、更清晰的参考音频。确保你的 [.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/Bear.txt) 文件里正确写了参考音频的文字内容。
+**A:** 换一段更干净、更清晰的参考音频。确保你的 [.txt](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/MyVoice.txt) 文件里正确写了参考音频的文字内容。
 
 ### Q: 我用的是 mp3 参考音频，不想转格式怎么办？
-**A:** 建议还是转成 `.wav`。如果实在不想转，代码已经支持 [.mp3](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/Bear.mp3)，但 SillyTavern 的 Audio Format 设置中也要相应调整，可能会有兼容性问题。推荐统一用 `.wav`。
+**A:** 建议还是转成 `.wav`。如果实在不想转，代码已经支持 [.mp3](file:///d:/TTS%20LOCAL/GPT/GPT-SoVITS-v2pro-20250604/GPT-SoVITS-v2pro-20250604/ref_audio/MyVoice.mp3)，但 SillyTavern 的 Audio Format 设置中也要相应调整，可能会有兼容性问题。推荐统一用 `.wav`。
 
 ---
 
@@ -319,15 +319,15 @@ INFO:     Uvicorn running on http://127.0.0.1:9881 (Press CTRL+C to quit)
 GPT-SoVITS-v2pro/
 ├── api_v2.py                          ← 修改过的 API 文件
 ├── ref_audio/                         ← 参考音频目录
-│   ├── Bear.wav                       ← 参考音频
-│   └── Bear.txt                       ← 音频里说的话
+│   ├── MyVoice.wav                       ← 参考音频
+│   └── MyVoice.txt                       ← 音频里说的话
 ├── GPT_SoVITS/
 │   └── configs/
 │       └── tts_infer.yaml             ← 配置了你的模型路径
 ├── GPT_weights_v2Pro/
-│   └── Bear-e5.ckpt                   ← 你的 GPT 权重
+│   └── MyVoice-e5.ckpt                   ← 你的 GPT 权重
 ├── SoVITS_weights_v2Pro/
-│   └── Bear_e4_s68.pth                ← 你的 SoVITS 权重
+│   └── MyVoice_e4_s68.pth                ← 你的 SoVITS 权重
 └── runtime/
     └── python.exe
 ```

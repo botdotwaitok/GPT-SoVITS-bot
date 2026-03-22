@@ -528,9 +528,9 @@ async def tts_post_endpoint(request: TTS_Request):
 # 
 # 使用方法:
 #   1. 在 ref_audio/ 目录下放入参考音频，命名为 <voice_id>.wav
-#      例如: ref_audio/Bear.wav
+#      例如: ref_audio/MyVoice.wav
 #   2. 同目录创建同名 .txt 文件写入参考音频的文字内容
-#      例如: ref_audio/Bear.txt (内容为音频里说的话)
+#      例如: ref_audio/MyVoice.txt (内容为音频里说的话)
 #   3. SillyTavern Provider Endpoint 填 http://127.0.0.1:9880
 # ============================================================
 
@@ -578,6 +578,27 @@ def _find_ref_audio(voice_name: str):
             return audio_path, prompt_text
     return None, ""
 
+def _detect_default_voice():
+    """扫描 ref_audio/ 目录，返回第一个可用的音频名称（不带后缀）"""
+    if os.path.isdir(REF_AUDIO_DIR):
+        for f in sorted(os.listdir(REF_AUDIO_DIR)):
+            if f.lower().endswith((".wav", ".mp3", ".ogg", ".flac")):
+                return os.path.splitext(f)[0]
+    return ""
+
+def _list_available_voices():
+    """扫描 ref_audio/ 目录，返回所有可用的语音列表（SillyTavern /speakers 格式）"""
+    voices = []
+    seen = set()
+    if os.path.isdir(REF_AUDIO_DIR):
+        for f in sorted(os.listdir(REF_AUDIO_DIR)):
+            if f.lower().endswith((".wav", ".mp3", ".ogg", ".flac")):
+                name = os.path.splitext(f)[0]
+                if name not in seen:
+                    seen.add(name)
+                    voices.append({"name": name, "voice_id": name})
+    return voices
+
 @APP.post("/")
 async def st_tts_endpoint(request: ST_TTS_Request):
     """SillyTavern 兼容入口: 自动补全 ref_audio_path / prompt_text / prompt_lang"""
@@ -587,18 +608,19 @@ async def st_tts_endpoint(request: ST_TTS_Request):
     raw_ref = req.get("ref_audio_path") or ""
     voice_name = req.get("target_voice", "") or ""
 
-    # SillyTavern 可能传一个构造出来的路径(如 ./参考音频/Bear.wav)
+    # SillyTavern 可能传一个构造出来的路径(如 ./参考音频/MyVoice.wav)
     # 我们从中提取出不带后缀的文件名作为 voice_name
     if raw_ref:
         basename = os.path.splitext(os.path.basename(raw_ref))[0]
-        # 处理类似 Bear.wav.mp3 的双后缀情况
+        # 处理类似 MyVoice.wav.mp3 的双后缀情况
         if "." in basename:
             basename = basename.rsplit(".", 1)[0]
         if basename:
             voice_name = basename
 
     if not voice_name:
-        voice_name = "Bear"  # 默认 fallback
+        # 自动检测 ref_audio/ 下第一个可用的音频作为默认
+        voice_name = _detect_default_voice()
 
     # 用 voice_name 去 ref_audio/ 目录查找实际文件
     audio_path, prompt_text = _find_ref_audio(voice_name)
@@ -687,13 +709,9 @@ async def set_sovits_weights(weights_path: str = None):
 
 @APP.get("/speakers")
 async def speakers_endpoint():
-    # 给酒馆递一张格式极其标准的“名片对象”
-    return JSONResponse(status_code=200, content=[
-        {
-            "name": "Bear",
-            "voice_id": "Bear"
-        }
-    ])
+    # 动态扫描 ref_audio/ 目录，返回所有可用的语音
+    voices = _list_available_voices()
+    return JSONResponse(status_code=200, content=voices)
 
 if __name__ == "__main__":
     try:
